@@ -1,14 +1,11 @@
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { collection, doc, getDoc, addDoc, query, orderBy, where, serverTimestamp, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { collection, doc, getDoc, addDoc, query, where, orderBy, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const greeting = document.getElementById("greeting");
 const totalPointsEl = document.getElementById("totalPoints");
 const tasksUl = document.getElementById("tasks");
 const leaderboardBody = document.getElementById("leaderboard");
-const withdrawBtn = document.getElementById("withdrawBtn");
-const withdrawAmount = document.getElementById("withdrawAmount");
-const myWithdraws = document.getElementById("myWithdraws");
 const logoutBtn = document.getElementById("logoutBtn");
 
 let currentUser = null;
@@ -19,10 +16,7 @@ const taskReward = {
 
 /* ================= AUTH ================= */
 onAuthStateChanged(auth, async (user)=>{
-  if(!user){
-    window.location.href="index.html";
-    return;
-  }
+  if(!user) { window.location.href="index.html"; return; }
   currentUser = user;
 
   const userDoc = await getDoc(doc(db,"users",user.uid));
@@ -34,7 +28,6 @@ onAuthStateChanged(auth, async (user)=>{
 
   setupTasks();
   loadLeaderboard();
-  loadWithdraws();
 });
 
 /* ================= LOGOUT ================= */
@@ -46,58 +39,80 @@ logoutBtn.onclick = async ()=>{
 /* ================= TASKS ================= */
 function setupTasks(){
   const taskLis = tasksUl.querySelectorAll("li");
-
-  taskLis.forEach(li=>{
+  taskLis.forEach(async li=>{
     const taskId = li.dataset.taskId;
     const joinBtn = li.querySelector(".joinBtn");
     const startBtn = li.querySelector(".startBtn");
     const timerSpan = li.querySelector(".timer");
 
-    let joinTime = null;
-    let timerInterval = null;
+    // Check if already joined
+    const joinSnap = await getDocs(query(
+      collection(db,"taskJoins"),
+      where("userId","==",currentUser.uid),
+      where("taskId","==",taskId)
+    ));
+    let joinData = null;
+    joinSnap.forEach(d=>{ joinData = d.data(); });
 
-    // Join button click
-    joinBtn.onclick = ()=>{
-      joinTime = new Date();
+    if(joinData){
       joinBtn.disabled = true;
       startBtn.disabled = false;
-      alert("Task Joined! Start within 5 minutes.");
+      setupTimer(new Date(joinData.joinTime.seconds*1000), timerSpan, startBtn);
+    }
 
-      startTimer(timerSpan, joinTime, startBtn);
+    // Join button
+    joinBtn.onclick = async ()=>{
+      const now = serverTimestamp();
+      await addDoc(collection(db,"taskJoins"),{
+        userId: currentUser.uid,
+        taskId,
+        joinTime: now
+      });
+      joinBtn.disabled = true;
+      startBtn.disabled = false;
+      setupTimer(new Date(), timerSpan, startBtn);
+      alert("Task Joined! Start within 5 minutes.");
     };
 
-    // Start button click
+    // Start button
     startBtn.onclick = async ()=>{
-      if(!joinTime) return alert("You need to join first.");
-      const diffMinutes = (new Date() - joinTime)/1000/60;
-      if(diffMinutes>5){
-        alert("You must start within 5 minutes of join!");
-        return;
-      }
+      // Check joinTime from Firebase
+      const joinSnap2 = await getDocs(query(
+        collection(db,"taskJoins"),
+        where("userId","==",currentUser.uid),
+        where("taskId","==",taskId)
+      ));
+      let joinedTime = null;
+      joinSnap2.forEach(d=>{ joinedTime = d.data().joinTime.toDate(); });
 
-      // Add taskRequest and update points
+      const diff = (new Date() - joinedTime)/1000/60; // minutes
+      if(diff>5){ alert("You must start within 5 minutes of join!"); return; }
+
+      // Save start to taskRequests
       await addDoc(collection(db,"taskRequests"),{
         userId: currentUser.uid,
         taskId,
-        status:"started",
         startTime: serverTimestamp(),
         points: taskReward[taskId]
       });
 
-      // Update totalPoints
+      // Update user points
       const userRef = doc(db,"users",currentUser.uid);
       const userSnap = await getDoc(userRef);
       const currentPoints = userSnap.data().totalPoints || 0;
-      await updateDoc(userRef,{totalPoints: currentPoints + taskReward[taskId]});
+      await userRef.update({ totalPoints: currentPoints + taskReward[taskId] });
       totalPointsEl.innerText = currentPoints + taskReward[taskId];
 
-      alert(`Task Started! You earned ${taskReward[taskId]} pts`);
+      alert(`Task Started! ${taskReward[taskId]} points added`);
       startBtn.disabled = true;
+
+      // Open boardques.vercel.app
+      window.open("https://boardques.vercel.app","_blank");
     };
   });
 }
 
-function startTimer(timerEl, joinTime, startBtn){
+function setupTimer(joinTime, timerEl, startBtn){
   const endTime = new Date(joinTime.getTime() + 4*60*60*1000); // 4 hr
   const interval = setInterval(()=>{
     const now = new Date();
@@ -108,11 +123,9 @@ function startTimer(timerEl, joinTime, startBtn){
       clearInterval(interval);
       return;
     }
-
     const h = Math.floor(diff/1000/60/60);
     const m = Math.floor(diff/1000/60)%60;
     const s = Math.floor(diff/1000)%60;
-
     timerEl.innerText = `Time left: ${h}h ${m}m ${s}s`;
   },1000);
 }
@@ -120,42 +133,12 @@ function startTimer(timerEl, joinTime, startBtn){
 /* ================= LEADERBOARD ================= */
 async function loadLeaderboard(){
   leaderboardBody.innerHTML = "";
-  const q = query(collection(db,"users"), orderBy("totalPoints","desc"));
-  const snap = await getDocs(q);
-  let rank = 1;
+  const snap = await getDocs(query(collection(db,"users"), orderBy("totalPoints","desc")));
+  let rank=1;
   snap.forEach(d=>{
-    const u=d.data();
-    const tr = document.createElement("tr");
+    const u = d.data();
+    const tr=document.createElement("tr");
     tr.innerHTML = `<td>${rank++}</td><td>${u.name}</td><td>${u.totalPoints||0}</td>`;
     leaderboardBody.appendChild(tr);
-  });
-}
-
-/* ================= WITHDRAW ================= */
-withdrawBtn.onclick = async ()=>{
-  const amount = parseInt(withdrawAmount.value);
-  if(!amount || amount<=0) return alert("Invalid amount");
-
-  await addDoc(collection(db,"withdrawRequests"),{
-    userId:currentUser.uid,
-    amount,
-    status:"pending",
-    time:serverTimestamp()
-  });
-  alert("Withdraw request sent");
-  withdrawAmount.value="";
-  loadWithdraws();
-};
-
-/* ================= MY WITHDRAWS ================= */
-async function loadWithdraws(){
-  myWithdraws.innerHTML="";
-  const q = query(collection(db,"withdrawRequests"), where("userId","==",currentUser.uid), orderBy("time","desc"));
-  const snap = await getDocs(q);
-  snap.forEach(d=>{
-    const w=d.data();
-    const li=document.createElement("li");
-    li.innerText = `${w.amount} pts - ${w.status}`;
-    myWithdraws.appendChild(li);
   });
 }
