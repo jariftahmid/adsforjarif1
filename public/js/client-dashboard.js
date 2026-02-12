@@ -1,20 +1,6 @@
 import { auth, db } from "./firebase.js";
-import {
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-import {
-  collection,
-  getDocs,
-  getDoc,
-  doc,
-  addDoc,
-  query,
-  orderBy,
-  where,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { collection, getDocs, getDoc, doc, addDoc, query, orderBy, where, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const greeting = document.getElementById("greeting");
 const totalPointsEl = document.getElementById("totalPoints");
@@ -28,21 +14,20 @@ const logoutBtn = document.getElementById("logoutBtn");
 let currentUser = null;
 
 /* ================= AUTH ================= */
-
 onAuthStateChanged(auth, async (user) => {
-  if (!user) {
+  if(!user){
     window.location.href = "index.html";
     return;
   }
 
   currentUser = user;
 
-  // Get user profile
+  // show name and points
   const userDoc = await getDoc(doc(db, "users", user.uid));
-  if (userDoc.exists()) {
+  if(userDoc.exists()){
     const data = userDoc.data();
     greeting.innerText = `Hi, ${data.name}`;
-    totalPointsEl.innerText = data.points || 0;
+    totalPointsEl.innerText = data.totalPoints || 0;
   }
 
   loadTasks();
@@ -51,15 +36,13 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 /* ================= LOGOUT ================= */
-
 logoutBtn.onclick = async () => {
   await signOut(auth);
   window.location.href = "index.html";
 };
 
 /* ================= TASKS ================= */
-
-async function loadTasks() {
+async function loadTasks(){
   tasksUl.innerHTML = "";
 
   const snap = await getDocs(collection(db, "tasks"));
@@ -69,8 +52,7 @@ async function loadTasks() {
     const li = document.createElement("li");
 
     li.innerHTML = `
-      <b>${t.title}</b><br>
-      Reward: ${t.points} pts<br>
+      <b>${t.title}</b> | Reward: ${t.points} pts <br>
       <button class="joinBtn">Join</button>
       <button class="startBtn">Start</button>
     `;
@@ -83,9 +65,9 @@ async function loadTasks() {
         userId: currentUser.uid,
         taskId: docu.id,
         status: "joined",
-        time: serverTimestamp()
+        joinTime: serverTimestamp()
       });
-      alert("Task Joined!");
+      alert("Task Joined! 4hr timer started.");
     };
 
     startBtn.onclick = async () => {
@@ -93,9 +75,9 @@ async function loadTasks() {
         userId: currentUser.uid,
         taskId: docu.id,
         status: "started",
-        time: serverTimestamp()
+        startTime: serverTimestamp()
       });
-      alert("Task Started!");
+      alert("Task Started! Admin will approve points.");
     };
 
     tasksUl.appendChild(li);
@@ -103,33 +85,28 @@ async function loadTasks() {
 }
 
 /* ================= LEADERBOARD ================= */
-
-async function loadLeaderboard() {
+async function loadLeaderboard(){
   leaderboardBody.innerHTML = "";
-
-  const q = query(collection(db, "users"), orderBy("points", "desc"));
+  const q = query(collection(db, "users"), orderBy("totalPoints","desc"));
   const snap = await getDocs(q);
 
   let rank = 1;
   snap.forEach(d => {
     const u = d.data();
     const tr = document.createElement("tr");
-
     tr.innerHTML = `
       <td>${rank++}</td>
       <td>${u.name}</td>
-      <td>${u.points || 0}</td>
+      <td>${u.totalPoints || 0}</td>
     `;
-
     leaderboardBody.appendChild(tr);
   });
 }
 
 /* ================= WITHDRAW ================= */
-
 withdrawBtn.onclick = async () => {
   const amount = parseInt(withdrawAmount.value);
-  if (!amount || amount <= 0) return alert("Invalid amount");
+  if(!amount || amount <= 0) return alert("Invalid amount");
 
   await addDoc(collection(db, "withdrawRequests"), {
     userId: currentUser.uid,
@@ -144,18 +121,16 @@ withdrawBtn.onclick = async () => {
 };
 
 /* ================= MY WITHDRAWS ================= */
-
-async function loadWithdraws() {
+async function loadWithdraws(){
   myWithdraws.innerHTML = "";
 
   const q = query(
     collection(db, "withdrawRequests"),
     where("userId", "==", currentUser.uid),
-    orderBy("time", "desc")
+    orderBy("time","desc")
   );
 
   const snap = await getDocs(q);
-
   snap.forEach(d => {
     const w = d.data();
     const li = document.createElement("li");
