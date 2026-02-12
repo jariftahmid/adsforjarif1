@@ -1,0 +1,36 @@
+<h2>Admin Panel</h2>
+<button onclick="logout()">Logout</button>
+
+<h3>Users</h3>
+<input id="searchEmail" placeholder="Search by email">
+<table border="1">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Role</th>
+      <th>Points</th>
+      <th>Toggle Role</th>
+    </tr>
+  </thead>
+  <tbody id="usersTable"></tbody>
+</table>
+
+<h3>Task Requests (Start Clicks)</h3>
+<ul id="requests"></ul>
+
+<h3>Withdraw Requests</h3>
+<ul id="withdraws"></ul>
+
+<h3>Export Data</h3>
+<button id="exportCSV">Export Users CSV</button>
+
+<h3>Statistics</h3>
+<canvas id="dailyChart" width="400"></canvas>
+<canvas id="topChart" width="400"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module" src="js/admin-panel.js"></script>
+<script type="module" src="js/admin-stats.js"></script>
+<script type="module" src="js/admin-analytics.js"></script>
+<script type="module" src="js/logout.js"></script>
