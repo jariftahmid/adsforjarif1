@@ -1,56 +1,165 @@
 import { auth, db } from "./firebase.js";
-import { doc, getDoc, collection, getDocs, query, where, addDoc, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// Load greeting and total points
-async function loadUser(){
-  const docSnap = await getDoc(doc(db,"users",auth.currentUser.uid));
-  const data = docSnap.data();
-  document.getElementById("greeting").textContent = `Hi, ${data.name}`;
-  document.getElementById("totalPoints").textContent = data.totalPoints || 0;
-}
+import {
+  collection,
+  getDocs,
+  getDoc,
+  doc,
+  addDoc,
+  query,
+  orderBy,
+  where,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-loadUser();
+const greeting = document.getElementById("greeting");
+const totalPointsEl = document.getElementById("totalPoints");
+const tasksUl = document.getElementById("tasks");
+const leaderboardBody = document.getElementById("leaderboard");
+const withdrawBtn = document.getElementById("withdrawBtn");
+const withdrawAmount = document.getElementById("withdrawAmount");
+const myWithdraws = document.getElementById("myWithdraws");
+const logoutBtn = document.getElementById("logoutBtn");
 
-// Load leaderboard
-async function loadLeaderboard(){
-  const snap = await getDocs(query(collection(db,"users"), orderBy("totalPoints","desc"), limit(10)));
-  const tbody = document.getElementById("leaderboard");
-  tbody.innerHTML = "";
-  let rank = 1;
-  snap.forEach(docSnap=>{
-    const data = docSnap.data();
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${rank}</td><td>${data.name||data.email}</td><td>${data.totalPoints||0}</td>`;
-    tbody.appendChild(tr);
-    rank++;
+let currentUser = null;
+
+/* ================= AUTH ================= */
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  currentUser = user;
+
+  // Get user profile
+  const userDoc = await getDoc(doc(db, "users", user.uid));
+  if (userDoc.exists()) {
+    const data = userDoc.data();
+    greeting.innerText = `Hi, ${data.name}`;
+    totalPointsEl.innerText = data.points || 0;
+  }
+
+  loadTasks();
+  loadLeaderboard();
+  loadWithdraws();
+});
+
+/* ================= LOGOUT ================= */
+
+logoutBtn.onclick = async () => {
+  await signOut(auth);
+  window.location.href = "login.html";
+};
+
+/* ================= TASKS ================= */
+
+async function loadTasks() {
+  tasksUl.innerHTML = "";
+
+  const snap = await getDocs(collection(db, "tasks"));
+
+  snap.forEach(docu => {
+    const t = docu.data();
+    const li = document.createElement("li");
+
+    li.innerHTML = `
+      <b>${t.title}</b><br>
+      Reward: ${t.points} pts<br>
+      <button class="joinBtn">Join</button>
+      <button class="startBtn">Start</button>
+    `;
+
+    const joinBtn = li.querySelector(".joinBtn");
+    const startBtn = li.querySelector(".startBtn");
+
+    joinBtn.onclick = async () => {
+      await addDoc(collection(db, "taskJoins"), {
+        userId: currentUser.uid,
+        taskId: docu.id,
+        status: "joined",
+        time: serverTimestamp()
+      });
+      alert("Task Joined!");
+    };
+
+    startBtn.onclick = async () => {
+      await addDoc(collection(db, "taskRequests"), {
+        userId: currentUser.uid,
+        taskId: docu.id,
+        status: "started",
+        time: serverTimestamp()
+      });
+      alert("Task Started!");
+    };
+
+    tasksUl.appendChild(li);
   });
 }
 
-loadLeaderboard();
+/* ================= LEADERBOARD ================= */
 
-// Withdraw system
-document.getElementById("withdrawBtn").onclick = async () => {
-  const amount = parseInt(document.getElementById("withdrawAmount").value);
-  if(!amount || amount<=0) return alert("Enter valid points");
-  await addDoc(collection(db,"withdrawRequests"),{
-    userId: auth.currentUser.uid,
+async function loadLeaderboard() {
+  leaderboardBody.innerHTML = "";
+
+  const q = query(collection(db, "users"), orderBy("points", "desc"));
+  const snap = await getDocs(q);
+
+  let rank = 1;
+  snap.forEach(d => {
+    const u = d.data();
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${rank++}</td>
+      <td>${u.name}</td>
+      <td>${u.points || 0}</td>
+    `;
+
+    leaderboardBody.appendChild(tr);
+  });
+}
+
+/* ================= WITHDRAW ================= */
+
+withdrawBtn.onclick = async () => {
+  const amount = parseInt(withdrawAmount.value);
+  if (!amount || amount <= 0) return alert("Invalid amount");
+
+  await addDoc(collection(db, "withdrawRequests"), {
+    userId: currentUser.uid,
     amount,
     status: "pending",
-    createdAt: serverTimestamp()
+    time: serverTimestamp()
   });
-  loadWithdrawRequests();
-}
 
-async function loadWithdrawRequests(){
-  const snap = await getDocs(query(collection(db,"withdrawRequests"), where("userId","==",auth.currentUser.uid)));
-  const ul = document.getElementById("myWithdraws");
-  ul.innerHTML = "";
-  snap.forEach(docSnap=>{
-    const data = docSnap.data();
+  alert("Withdraw Request Sent!");
+  withdrawAmount.value = "";
+  loadWithdraws();
+};
+
+/* ================= MY WITHDRAWS ================= */
+
+async function loadWithdraws() {
+  myWithdraws.innerHTML = "";
+
+  const q = query(
+    collection(db, "withdrawRequests"),
+    where("userId", "==", currentUser.uid),
+    orderBy("time", "desc")
+  );
+
+  const snap = await getDocs(q);
+
+  snap.forEach(d => {
+    const w = d.data();
     const li = document.createElement("li");
-    li.textContent = `Amount: ${data.amount}, Status: ${data.status}`;
-    ul.appendChild(li);
+    li.innerText = `${w.amount} pts - ${w.status}`;
+    myWithdraws.appendChild(li);
   });
 }
-
-loadWithdrawRequests();
