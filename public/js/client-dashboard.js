@@ -15,7 +15,7 @@ let currentUser = null;
 const taskReward = { "task1": 10, "task2": 20 };
 
 onAuthStateChanged(auth, async (user)=>{
-  if(!user){ window.location.href="login.html"; return; }
+  if(!user){ window.location.href="index.html"; return; }
   currentUser = user;
 
   const userDoc = await getDoc(doc(db,"users",user.uid));
@@ -30,7 +30,7 @@ onAuthStateChanged(auth, async (user)=>{
   loadWithdraws();
 });
 
-logoutBtn.onclick = async ()=>{ await signOut(auth); window.location.href="login.html"; };
+logoutBtn.onclick = async ()=>{ await signOut(auth); window.location.href="index.html"; };
 
 function setupTasks(){
   const taskLis = tasksUl.querySelectorAll("li");
