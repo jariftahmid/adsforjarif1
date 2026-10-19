@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobile Cloud Remote Controller</title>
+  <!-- Firebase Cloud SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #090d16;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .brand h1 { font-size: 16px; font-weight: 700; color: #10b981; }
+    .brand p { font-size: 12px; color: #94a3b8; }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #10b981; color: #022c22; font-weight: 700; }
+    .btn-primary:hover { background: #059669; color: white; }
+    .btn-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .btn-nav {
+      flex: 1;
+      padding: 12px 8px;
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      font-weight: 700;
+      font-size: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .btn-nav:hover { background: #334155; color: white; }
+    main {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 440px;
+      width: 100%;
+    }
+    .input-text {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: white;
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+    .screen-container {
+      width: 340px;
+      background: #000;
+      border-radius: 24px;
+      padding: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      border: 3px solid #10b981;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .viewport {
+      position: relative;
+      width: 320px;
+      height: 640px;
+      background: #020617;
+      border-radius: 16px;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+    .viewport img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    .nav-bar {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      margin-top: 10px;
+    }
+    .side-panel {
+      flex: 1;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #1e293b;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Cloud Mobile Controller (Zero-IP)</h1>
+      <p id="hdr-phone-user">No IP or Router configuration needed</p>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <span id="session-badge" class="badge" style="display:none;">LIVE CLOUD CONNECTED</span>
+      <button id="logout-btn" class="btn btn-danger" style="display:none;" onclick="logout()">Disconnect</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- LOGIN VIEW (ONLY USERNAME & PASSWORD) -->
+    <div id="login-card" class="card">
+      <h2 style="font-size: 18px; margin-bottom: 8px;">Login to Your Mobile</h2>
+      <p style="font-size: 13px; color: #94a3b8; margin-bottom: 18px;">
+        কোনো আইপি বা পোর্ট ফরোয়ার্ডিং লাগবে না। সরাসরি আপনার মোবাইলের ইউজারনেম ও পাসওয়ার্ড দিন:
+      </p>
+
+      <label style="font-size: 12px; color: #a7f3d0; font-weight: 600; display:block; margin-bottom:4px;">Mobile Username:</label>
+      <input type="text" id="username-input" class="input-text" placeholder="e.g. myphone">
+
+      <label style="font-size: 12px; color: #a7f3d0; font-weight: 600; display:block; margin-bottom:4px;">Password:</label>
+      <input type="password" id="password-input" class="input-text" placeholder="Enter mobile password">
+
+      <div id="auth-err" style="display:none; color:#f87171; font-size:12px; margin-bottom:12px;"></div>
+
+      <button class="btn btn-primary" style="width:100%; padding:12px;" onclick="connectWithCloud()">Login & Control Mobile</button>
+    </div>
+
+    <!-- ACTIVE CONTROLLER VIEW -->
+    <div id="controller-view" style="display:none; display:flex; gap:20px; flex-wrap:wrap; justify-content:center;">
+      <div class="screen-container">
+        <div class="viewport" id="viewport">
+          <img id="mobile-screen-img" src="" alt="Waiting for mobile screen stream...">
+        </div>
+        <div class="nav-bar">
+          <button class="btn-nav" onclick="sendCloudNav('BACK')">◀ BACK</button>
+          <button class="btn-nav" onclick="sendCloudNav('HOME')">● HOME</button>
+          <button class="btn-nav" onclick="sendCloudNav('RECENTS')">■ RECENTS</button>
+        </div>
+      </div>
+
+      <div class="side-panel">
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:10px; color:#10b981;">Mobile Cloud Status</h3>
+          <div class="metric-row"><span>Device Status:</span><strong id="m-status" style="color:#34d399;">ONLINE</strong></div>
+          <div class="metric-row"><span>Battery:</span><strong id="m-battery">--</strong></div>
+          <div class="metric-row"><span>Last Heartbeat:</span><strong id="m-heartbeat">Just now</strong></div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:10px;">Remote Keyboard</h3>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="type-text-input" class="input-text" style="margin-bottom:0;" placeholder="Type text to send to phone...">
+            <button class="btn btn-primary" onclick="sendCloudText()">Send</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:8px;">Gesture Control</h3>
+          <p style="font-size:12px; color:#94a3b8; line-height:16px;">
+            মোবাইলের স্ক্রিনে মাউস দিয়ে ক্লিক করলেই সরাসরি ফোনে টাচ (Tap) হবে, আর মাউস চেপে ধরে ড্র্যাগ করলে সোয়াইপ বা স্ক্রল (Swipe) হবে।
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const firebaseConfig = {
+      projectId: "gen-lang-client-0052839779",
+      apiKey: "AIzaSyAMRpg5YLfdkmiW3tWq_pS1A_6O6OPoCuE"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let currentUsername = "";
+    let hostDocUnsubscribe = null;
+
+    async function connectWithCloud() {
+      const user = document.getElementById("username-input").value.trim().toLowerCase();
+      const pwd = document.getElementById("password-input").value.trim();
+      const errEl = document.getElementById("auth-err");
+      errEl.style.display = "none";
+
+      if (!user || !pwd) {
+        errEl.textContent = "Please enter both username and password";
+        errEl.style.display = "block";
+        return;
+      }
+
+      try {
+        const docRef = db.collection("hosts").document(user);
+        const doc = await docRef.get();
+        if (!doc.exists) {
+          errEl.textContent = "Mobile username '" + user + "' not found. Make sure the app is open on your mobile.";
+          errEl.style.display = "block";
+          return;
+        }
+
+        const data = doc.data();
+        if (data.password !== pwd) {
+          errEl.textContent = "Incorrect password for this mobile.";
+          errEl.style.display = "block";
+          return;
+        }
+
+        currentUsername = user;
+        document.getElementById("login-card").style.display = "none";
+        document.getElementById("controller-view").style.display = "flex";
+        document.getElementById("session-badge").style.display = "inline-flex";
+        document.getElementById("logout-btn").style.display = "inline-flex";
+        document.getElementById("hdr-phone-user").textContent = "Connected to: " + user;
+
+        listenToMobileScreen(user);
+        initCloudTouches();
+      } catch (e) {
+        errEl.textContent = "Cloud connection error: " + e.message;
+        errEl.style.display = "block";
+      }
+    }
+
+    function listenToMobileScreen(username) {
+      if (hostDocUnsubscribe) hostDocUnsubscribe();
+
+      hostDocUnsubscribe = db.collection("hosts").document(username)
+        .onSnapshot(doc => {
+          if (!doc.exists) return;
+          const data = doc.data();
+          if (data.latestFrame) {
+            document.getElementById("mobile-screen-img").src = data.latestFrame;
+          }
+          document.getElementById("m-status").textContent = data.status || "ONLINE";
+          document.getElementById("m-battery").textContent = (data.batteryPct || "--") + "%" + (data.isCharging ? " ⚡" : "");
+          if (data.lastHeartbeat) {
+            const secAgo = Math.round((Date.now() - data.lastHeartbeat) / 1000);
+            document.getElementById("m-heartbeat").textContent = secAgo + "s ago";
+          }
+        });
+    }
+
+    async function sendCloudCommand(cmd) {
+      if (!currentUsername) return;
+      try {
+        const cmdId = "CMD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+        await db.collection("hosts").document(currentUsername)
+          .collection("commands").document(cmdId)
+          .set({
+            commandId: cmdId,
+            ...cmd,
+            timestamp: Date.now(),
+            executed: false
+          });
+      } catch (e) {
+        console.error("Failed to send command to mobile:", e);
+      }
+    }
+
+    function sendCloudNav(action) {
+      sendCloudCommand({ type: "nav", action: action });
+    }
+
+    function sendCloudText() {
+      const el = document.getElementById("type-text-input");
+      if (!el.value) return;
+      sendCloudCommand({ type: "text", text: el.value });
+      el.value = "";
+    }
+
+    function initCloudTouches() {
+      const vp = document.getElementById("viewport");
+      let isDown = false;
+      let startX = 0, startY = 0, startTime = 0;
+
+      function getNorm(clientX, clientY) {
+        const r = vp.getBoundingClientRect();
+        return {
+          x: Math.max(0.01, Math.min(0.99, (clientX - r.left) / r.width)),
+          y: Math.max(0.01, Math.min(0.99, (clientY - r.top) / r.height))
+        };
+      }
+
+      vp.addEventListener("mousedown", (e) => {
+        isDown = true;
+        startTime = Date.now();
+        const p = getNorm(e.clientX, e.clientY);
+        startX = p.x;
+        startY = p.y;
+      });
+
+      window.addEventListener("mouseup", (e) => {
+        if (!isDown) return;
+        isDown = false;
+        const p = getNorm(e.clientX, e.clientY);
+        const dist = Math.hypot(p.x - startX, p.y - startY);
+        const elapsed = Date.now() - startTime;
+        if (dist < 0.03) {
+          sendCloudCommand({ type: "tap", x: startX, y: startY });
+        } else {
+          sendCloudCommand({ type: "swipe", startX: startX, startY: startY, endX: p.x, endY: p.y, durationMs: Math.min(600, elapsed) });
+        }
+      });
+    }
+
+    function logout() {
+      if (hostDocUnsubscribe) hostDocUnsubscribe();
+      location.reload();
+    }
+  </script>
+</body>
+</html>
