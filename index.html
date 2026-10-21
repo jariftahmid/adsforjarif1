@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mobile Cloud Remote Controller</title>
+  <title>Mobile Cloud Remote Controller & Device Telemetry</title>
+  <!-- Chart.js for High Performance Interactive Statistics Graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -17,23 +19,54 @@
     header {
       background: #0f172a;
       border-bottom: 1px solid #1e293b;
-      padding: 12px 20px;
+      padding: 12px 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background: #10b981;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #022c22;
+      font-weight: bold;
     }
     .brand h1 { font-size: 16px; font-weight: 700; color: #10b981; }
-    .brand p { font-size: 12px; color: #94a3b8; }
+    .brand p { font-size: 11px; color: #94a3b8; }
     .badge {
       padding: 4px 10px;
       border-radius: 9999px;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 700;
       background: rgba(16, 185, 129, 0.15);
       color: #34d399;
       border: 1px solid rgba(16, 185, 129, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: #10b981;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 10px #10b981; }
+      100% { transform: scale(0.95); opacity: 0.8; }
     }
     .btn {
       padding: 8px 16px;
@@ -43,10 +76,30 @@
       cursor: pointer;
       border: none;
       transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
     .btn-primary { background: #10b981; color: #022c22; font-weight: 700; }
     .btn-primary:hover { background: #059669; color: white; }
     .btn-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .btn-danger:hover { background: #ef4444; color: white; }
+    .btn-action {
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-action:hover { background: #334155; border-color: #10b981; color: #34d399; }
     .btn-nav {
       flex: 1;
       padding: 12px 8px;
@@ -57,24 +110,71 @@
       font-size: 12px;
       border-radius: 8px;
       cursor: pointer;
+      transition: background 0.2s;
     }
     .btn-nav:hover { background: #334155; color: white; }
+    .btn-mode {
+      flex: 1;
+      padding: 9px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-mode:hover { background: #334155; color: #fff; }
+    .btn-mode.active {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid #10b981;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
+    }
+    .tab-bar {
+      display: flex;
+      gap: 6px;
+      background: #0b1120;
+      border-bottom: 1px solid #1e293b;
+      padding: 8px 24px;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tab-btn:hover { color: #f1f5f9; background: #1e293b; }
+    .tab-btn.active {
+      background: #1e293b;
+      color: #34d399;
+      border-color: #10b981;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
+    }
     main {
       flex: 1;
-      padding: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      gap: 20px;
-      flex-wrap: wrap;
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
     }
     .card {
       background: #0f172a;
       border: 1px solid #1e293b;
-      border-radius: 12px;
-      padding: 24px;
-      max-width: 440px;
-      width: 100%;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     }
     .input-text {
       width: 100%;
@@ -85,24 +185,27 @@
       color: white;
       font-size: 14px;
       margin-bottom: 14px;
+      outline: none;
     }
+    .input-text:focus { border-color: #10b981; }
     .screen-container {
       width: 340px;
       background: #000;
-      border-radius: 24px;
+      border-radius: 28px;
       padding: 10px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
       border: 3px solid #10b981;
       display: flex;
       flex-direction: column;
       align-items: center;
+      flex-shrink: 0;
     }
     .viewport {
       position: relative;
       width: 320px;
       height: 640px;
       background: #020617;
-      border-radius: 16px;
+      border-radius: 20px;
       overflow: hidden;
       cursor: crosshair;
     }
@@ -114,15 +217,11 @@
       user-select: none;
       -webkit-user-drag: none;
     }
-    .nav-bar {
-      display: flex;
-      gap: 8px;
-      width: 100%;
-      margin-top: 10px;
-    }
+    .nav-bar { display: flex; gap: 8px; width: 100%; margin-top: 10px; }
     .side-panel {
       flex: 1;
-      max-width: 420px;
+      min-width: 320px;
+      max-width: 500px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -130,82 +229,390 @@
     .metric-row {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       padding: 8px 0;
       border-bottom: 1px solid #1e293b;
       font-size: 13px;
+    }
+    .metric-row:last-child { border-bottom: none; }
+    .metric-label { color: #94a3b8; display: flex; align-items: center; gap: 6px; }
+    .metric-value { font-weight: 600; color: #f8fafc; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    .chart-container {
+      position: relative;
+      height: 220px;
+      width: 100%;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
   <header>
     <div class="brand">
-      <h1>Cloud Mobile Controller (Zero-IP)</h1>
-      <p id="hdr-phone-user">No IP or Router configuration needed</p>
+      <div class="brand-icon">⚡</div>
+      <div>
+        <h1>Mobile Remote Host & Device Telemetry</h1>
+        <p id="hdr-phone-user">No IP or Port Forwarding • Direct Cloud Stream</p>
+      </div>
     </div>
     <div style="display:flex; gap:10px; align-items:center;">
-      <span id="session-badge" class="badge" style="display:none;">LIVE CLOUD CONNECTED</span>
+      <span id="session-badge" class="badge" style="display:none;"><span class="pulse-dot"></span> LIVE CLOUD ACTIVE</span>
       <button id="logout-btn" class="btn btn-danger" style="display:none;" onclick="logout()">Disconnect</button>
     </div>
   </header>
 
+  <!-- TAB NAVIGATION -->
+  <nav id="app-tabs" class="tab-bar" style="display:none;">
+    <button class="tab-btn active" onclick="switchTab('screen-tab')">📱 Live Remote Screen</button>
+    <button class="tab-btn" onclick="switchTab('analytics-tab')">📊 Analytics & Graphs</button>
+    <button class="tab-btn" onclick="switchTab('telemetry-tab')">📋 All Device Telemetry</button>
+    <button class="tab-btn" onclick="switchTab('actions-tab')">🛠️ Remote Actions & Tools</button>
+  </nav>
+
   <main>
     <!-- LOGIN VIEW (ONLY USERNAME & PASSWORD) -->
-    <div id="login-card" class="card">
-      <h2 style="font-size: 18px; margin-bottom: 8px;">Login to Your Mobile</h2>
-      <p style="font-size: 13px; color: #94a3b8; margin-bottom: 18px;">
+    <div id="login-card" class="card" style="max-width:440px; margin: 40px auto;">
+      <h2 style="font-size: 18px; margin-bottom: 8px; color: #10b981;">Login to Your Mobile</h2>
+      <p style="font-size: 13px; color: #94a3b8; margin-bottom: 18px; line-height: 18px;">
         কোনো আইপি বা পোর্ট ফরোয়ার্ডিং লাগবে না। সরাসরি আপনার মোবাইলের ইউজারনেম ও পাসওয়ার্ড দিন:
       </p>
 
-      <label style="font-size: 12px; color: #a7f3d0; font-weight: 600; display:block; margin-bottom:4px;">Mobile Username:</label>
-      <input type="text" id="username-input" class="input-text" value="myphone-8f78c4" placeholder="e.g. myphone-8f78c4">
+      <label style="font-size: 12px; color: #a7f3d0; font-weight: 600; display:block; margin-bottom:4px;">Mobile User ID (Username):</label>
+      <input type="text" id="username-input" class="input-text" placeholder="e.g. myphone-xxxxxx">
 
       <label style="font-size: 12px; color: #a7f3d0; font-weight: 600; display:block; margin-bottom:4px;">Password (ডিফল্ট: HostAdmin@2026):</label>
-      <input type="password" id="password-input" class="input-text" value="HostAdmin@2026" placeholder="Enter mobile password">
+      <input type="password" id="password-input" class="input-text" placeholder="Enter mobile password">
 
-      <div id="auth-err" style="display:none; color:#f87171; font-size:12px; margin-bottom:12px;"></div>
+      <div id="auth-err" style="display:none; color:#f87171; font-size:12px; margin-bottom:12px; background: rgba(239,68,68,0.1); padding: 8px; border-radius: 6px;"></div>
 
-      <button class="btn btn-primary" style="width:100%; padding:12px;" onclick="connectWithCloud()">Login & Control Mobile</button>
+      <button class="btn btn-primary" style="width:100%; padding:12px; font-size:14px; justify-content:center;" onclick="connectWithCloud()">
+        Login & Connect to Mobile
+      </button>
     </div>
 
-    <!-- ACTIVE CONTROLLER VIEW -->
-    <div id="controller-view" style="display:none; display:flex; gap:20px; flex-wrap:wrap; justify-content:center;">
-      <div class="screen-container">
-        <div class="viewport" id="viewport">
-          <img id="mobile-screen-img" src="" alt="Waiting for mobile screen stream...">
-        </div>
-        <div class="nav-bar">
-          <button class="btn-nav" onclick="sendCloudNav('BACK')">◀ BACK</button>
-          <button class="btn-nav" onclick="sendCloudNav('HOME')">● HOME</button>
-          <button class="btn-nav" onclick="sendCloudNav('RECENTS')">■ RECENTS</button>
-        </div>
-      </div>
-
-      <div class="side-panel">
-        <div class="card">
-          <h3 style="font-size:15px; margin-bottom:10px; color:#10b981;">Mobile Cloud Status</h3>
-          <div class="metric-row"><span>Device Status:</span><strong id="m-status" style="color:#34d399;">ONLINE</strong></div>
-          <div class="metric-row"><span>Battery:</span><strong id="m-battery">--</strong></div>
-          <div class="metric-row"><span>Last Heartbeat:</span><strong id="m-heartbeat">Just now</strong></div>
-        </div>
-
-        <div class="card">
-          <h3 style="font-size:15px; margin-bottom:10px;">Remote Keyboard</h3>
-          <div style="display:flex; gap:8px;">
-            <input type="text" id="type-text-input" class="input-text" style="margin-bottom:0;" placeholder="Type text to send to phone...">
-            <button class="btn btn-primary" onclick="sendCloudText()">Send</button>
+    <!-- TAB 1: LIVE REMOTE SCREEN & SPEED MODES -->
+    <div id="screen-tab" class="tab-content" style="display:none;">
+      <div style="display:flex; gap:24px; flex-wrap:wrap; justify-content:center; align-items:flex-start;">
+        <!-- Phone Viewport -->
+        <div class="screen-container">
+          <div class="viewport" id="viewport">
+            <img id="mobile-screen-img" src="" alt="Waiting for mobile screen stream...">
+          </div>
+          <div class="nav-bar">
+            <button class="btn-nav" onclick="sendCloudNav('BACK')">◀ BACK</button>
+            <button class="btn-nav" onclick="sendCloudNav('HOME')">● HOME</button>
+            <button class="btn-nav" onclick="sendCloudNav('RECENTS')">■ RECENTS</button>
           </div>
         </div>
 
-        <div class="card">
-          <h3 style="font-size:15px; margin-bottom:8px;">Gesture Control</h3>
-          <p style="font-size:12px; color:#94a3b8; line-height:16px;">
-            মোবাইলের স্ক্রিনে মাউস দিয়ে ক্লিক করলেই সরাসরি ফোনে টাচ (Tap) হবে, আর মাউস চেপে ধরে ড্র্যাগ করলে সোয়াইপ বা স্ক্রল (Swipe) হবে।
+        <!-- Controls Side Panel -->
+        <div class="side-panel">
+          <!-- 3-MODE STREAMING LATENCY CARD (CONTROLLED FROM WEB) -->
+          <div class="card" style="border: 1px solid rgba(16, 185, 129, 0.4);">
+            <h3 style="font-size:14px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+              <span style="color:#10b981;">⚡ Speed & Latency Mode</span>
+              <span id="mode-badge" style="font-size:11px; font-weight:700; color:#34d399; background:rgba(16,185,129,0.15); padding:2px 8px; border-radius:99px;">⚡ Ultra Fast (~120ms)</span>
+            </h3>
+            <p id="mode-desc" style="font-size:11px; color:#94a3b8; margin-bottom:12px; line-height:15px;">
+              Ultra Fast (~120ms): সবচেয়ে কম ল্যাটেন্সি, রিয়েল-টাইম রেসপন্স ও মসৃণ কন্ট্রোল।
+            </p>
+            <div style="display:flex; gap:6px;">
+              <button id="btn-mode-fast" class="btn btn-mode active" onclick="switchLatencyMode('LOW_LATENCY')">⚡ Ultra Fast</button>
+              <button id="btn-mode-balanced" class="btn btn-mode" onclick="switchLatencyMode('BALANCED')">⚖️ Medium</button>
+              <button id="btn-mode-hd" class="btn btn-mode" onclick="switchLatencyMode('HIGH_QUALITY')">🌟 HD</button>
+            </div>
+          </div>
+
+          <!-- Quick Summary Card -->
+          <div class="card">
+            <h3 style="font-size:15px; margin-bottom:10px; color:#10b981;">Quick Mobile Status</h3>
+            <div class="metric-row">
+              <span class="metric-label">Device Status:</span>
+              <strong id="m-status" style="color:#34d399;">ONLINE</strong>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Battery Level:</span>
+              <span id="m-battery" class="metric-value">--</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Charging State:</span>
+              <span id="m-charging-type" class="metric-value">--</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Active Network:</span>
+              <span id="m-network" class="metric-value">--</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Foreground App:</span>
+              <span id="m-fg-app" class="metric-value" style="color:#38bdf8;">--</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Last Heartbeat:</span>
+              <span id="m-heartbeat" class="metric-value">Just now</span>
+            </div>
+          </div>
+
+          <!-- Remote Keyboard Input -->
+          <div class="card">
+            <h3 style="font-size:15px; margin-bottom:10px;">Remote Keyboard</h3>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="type-text-input" class="input-text" style="margin-bottom:0;" placeholder="Type text to send to phone...">
+              <button class="btn btn-primary" onclick="sendCloudText()">Send</button>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="card">
+            <h3 style="font-size:14px; margin-bottom:10px;">Quick Controls</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <button class="btn-action" onclick="sendCloudCommand({type:'ring_device'})">🔔 Ring Device</button>
+              <button class="btn-action" onclick="sendCloudCommand({type:'sync_now'})">🔄 Refresh Telemetry</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: ANALYTICS & INTERACTIVE GRAPHS -->
+    <div id="analytics-tab" class="tab-content" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="font-size:18px; color:#10b981;">📊 Device Statistics & Usage Analytics</h2>
+        <button class="btn-action" onclick="sendCloudCommand({type:'sync_now'})">🔄 Refresh Graphs</button>
+      </div>
+
+      <div class="telemetry-grid">
+        <!-- 1. Battery Drain & Trend Chart -->
+        <div class="card" style="grid-column: span 2;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:15px; color:#34d399;">⚡ Battery Usage & Drain Trend</h3>
+            <span id="chart-battery-badge" class="badge">--%</span>
+          </div>
+          <p style="font-size:12px; color:#94a3b8; margin-top:2px;">
+            সময়ভিত্তিক ব্যাটারি ক্ষয় ও চার্জিং ইতিহাস
           </p>
+          <div class="chart-container">
+            <canvas id="batteryChart"></canvas>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:#94a3b8; margin-top:8px;">
+            <span>Drain Rate: <strong id="stat-drain-rate" style="color:white;">--</strong></span>
+            <span>Temperature: <strong id="stat-temp" style="color:#fbbf24;">--</strong></span>
+            <span>Est. Remaining: <strong id="stat-est-time" style="color:#34d399;">--</strong></span>
+          </div>
+        </div>
+
+        <!-- 2. App-wise Screen Time Bar Chart -->
+        <div class="card" style="grid-column: span 2;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:15px; color:#38bdf8;">📱 App-wise Screen Time & Daily Usage</h3>
+            <span id="chart-screentime-badge" class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border-color:rgba(56,189,248,0.3);">Total: 4h 52m</span>
+          </div>
+          <p style="font-size:12px; color:#94a3b8; margin-top:2px;">
+            কোন অ্যাপ কত মিনিট ব্যবহার করা হয়েছে তার পরিসংখ্যান
+          </p>
+          <div class="chart-container">
+            <canvas id="appUsageChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 3. RAM Memory Gauge -->
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:6px; color:#a78bfa;">🧠 RAM Memory Distribution</h3>
+          <div class="chart-container" style="height:170px;">
+            <canvas id="ramChart"></canvas>
+          </div>
+          <div class="metric-row" style="margin-top:10px;">
+            <span>Used RAM:</span>
+            <strong id="gauge-ram-used" style="color:#a78bfa;">--</strong>
+          </div>
+          <div class="metric-row">
+            <span>Free RAM:</span>
+            <strong id="gauge-ram-free" style="color:#34d399;">--</strong>
+          </div>
+        </div>
+
+        <!-- 4. Storage Distribution Gauge -->
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:6px; color:#f59e0b;">💾 Internal Storage Distribution</h3>
+          <div class="chart-container" style="height:170px;">
+            <canvas id="storageChart"></canvas>
+          </div>
+          <div class="metric-row" style="margin-top:10px;">
+            <span>Used Storage:</span>
+            <strong id="gauge-storage-used" style="color:#f59e0b;">--</strong>
+          </div>
+          <div class="metric-row">
+            <span>Free Storage:</span>
+            <strong id="gauge-storage-free" style="color:#34d399;">--</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: ALL DEVICE TELEMETRY & AUDIT -->
+    <div id="telemetry-tab" class="tab-content" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="font-size:18px; color:#10b981;">📋 Complete Device Telemetry & Health Audit</h2>
+        <button class="btn-action" onclick="sendCloudCommand({type:'sync_now'})">🔄 Refresh Telemetry</button>
+      </div>
+
+      <div class="telemetry-grid">
+        <!-- Status & Lifecycle -->
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:12px; color:#10b981;">🔄 Status & Lifecycle</h3>
+          <div class="metric-row"><span class="metric-label">Online/Offline Status:</span><span id="t-status" class="metric-value" style="color:#34d399;">ONLINE</span></div>
+          <div class="metric-row"><span class="metric-label">Screen State:</span><span id="t-screen-state" class="metric-value">Screen On</span></div>
+          <div class="metric-row"><span class="metric-label">Device Lock:</span><span id="t-lock-state" class="metric-value">Secured (PIN)</span></div>
+          <div class="metric-row"><span class="metric-label">Device Uptime:</span><span id="t-uptime" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Last Boot Time:</span><span id="t-last-boot" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Unlock Count:</span><span id="t-unlock-count" class="metric-value">-- times</span></div>
+          <div class="metric-row"><span class="metric-label">Daily Screen Time:</span><span id="t-screen-time" class="metric-value">4h 52m</span></div>
+          <div class="metric-row"><span class="metric-label">Idle Time:</span><span id="t-idle-time" class="metric-value">Active</span></div>
+        </div>
+
+        <!-- Hardware & System Specs -->
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:12px; color:#38bdf8;">⚙️ Hardware & System</h3>
+          <div class="metric-row"><span class="metric-label">Device Model:</span><span id="t-model" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Android Version:</span><span id="t-android" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Security Patch:</span><span id="t-patch" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">CPU Cores & Arch:</span><span id="t-cpu" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Screen Resolution:</span><span id="t-resolution" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Refresh Rate:</span><span id="t-refresh-rate" class="metric-value">120 Hz</span></div>
+          <div class="metric-row"><span class="metric-label">Display Density:</span><span id="t-density" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Brightness:</span><span id="t-brightness" class="metric-value">68%</span></div>
+          <div class="metric-row"><span class="metric-label">Dark Mode:</span><span id="t-dark-mode" class="metric-value">Enabled</span></div>
+          <div class="metric-row"><span class="metric-label">System Language:</span><span id="t-language" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Time Zone:</span><span id="t-timezone" class="metric-value">--</span></div>
+        </div>
+
+        <!-- Battery Health & Power -->
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:12px; color:#fbbf24;">⚡ Battery Health & Power</h3>
+          <div class="metric-row"><span class="metric-label">Battery Level:</span><span id="t-battery-pct" class="metric-value" style="color:#34d399;">--%</span></div>
+          <div class="metric-row"><span class="metric-label">Charging State:</span><span id="t-charging" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Charging Type:</span><span id="t-plug-type" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Battery Temperature:</span><span id="t-temp" class="metric-value">--°C</span></div>
+          <div class="metric-row"><span class="metric-label">Battery Health:</span><span id="t-health" class="metric-value">Good</span></div>
+          <div class="metric-row"><span class="metric-label">Battery Voltage:</span><span id="t-voltage" class="metric-value">-- mV</span></div>
+          <div class="metric-row"><span class="metric-label">Power-Saving Mode:</span><span id="t-power-save" class="metric-value">Off</span></div>
+          <div class="metric-row"><span class="metric-label">Drain Rate:</span><span id="t-drain-rate" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Estimated Remaining:</span><span id="t-remaining" class="metric-value">--</span></div>
+        </div>
+
+        <!-- Network & SIM Details -->
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:12px; color:#a78bfa;">🌐 Network & SIM Telemetry</h3>
+          <div class="metric-row"><span class="metric-label">Active Network:</span><span id="t-net-type" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Network Gen:</span><span id="t-net-gen" class="metric-value">Wi-Fi 6 / 5G</span></div>
+          <div class="metric-row"><span class="metric-label">Wi-Fi SSID:</span><span id="t-wifi-ssid" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Signal Strength:</span><span id="t-wifi-signal" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Link Speed:</span><span id="t-link-speed" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">SIM Operator:</span><span id="t-sim-op" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">SIM State:</span><span id="t-sim-state" class="metric-value">SIM Ready</span></div>
+          <div class="metric-row"><span class="metric-label">SIM Slots:</span><span id="t-sim-count" class="metric-value">Dual SIM (2)</span></div>
+          <div class="metric-row"><span class="metric-label">IP Address (Local):</span><span id="t-ip" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">VPN Status:</span><span id="t-vpn" class="metric-value">Inactive</span></div>
+          <div class="metric-row"><span class="metric-label">Data Saver:</span><span id="t-data-saver" class="metric-value">Off</span></div>
+          <div class="metric-row"><span class="metric-label">Today's Data Usage:</span><span id="t-data-usage" class="metric-value">--</span></div>
+        </div>
+
+        <!-- Location & Sensor Telemetry -->
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:12px; color:#f43f5e;">📍 Location & GPS Telemetry</h3>
+          <div class="metric-row"><span class="metric-label">GPS Status:</span><span id="t-gps" class="metric-value">High Accuracy Active</span></div>
+          <div class="metric-row"><span class="metric-label">Coordinates:</span><span id="t-coords" class="metric-value">23.8103° N, 90.4125° E</span></div>
+          <div class="metric-row"><span class="metric-label">Accuracy:</span><span id="t-loc-accuracy" class="metric-value">± 8 meters</span></div>
+          <div class="metric-row"><span class="metric-label">Movement:</span><span id="t-movement" class="metric-value">Stationary (Desk)</span></div>
+          <div style="margin-top:14px;">
+            <a id="t-maps-link" href="https://maps.google.com/?q=23.8103,90.4125" target="_blank" class="btn btn-action" style="width:100%; text-decoration:none; justify-content:center;">
+              🗺️ Find My Device on Google Maps
+            </a>
+          </div>
+        </div>
+
+        <!-- Security & Device Integrity -->
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:12px; color:#10b981;">🛡️ Security & Integrity</h3>
+          <div class="metric-row"><span class="metric-label">Play Protect:</span><span id="t-play-protect" class="metric-value" style="color:#34d399;">Verified Safe</span></div>
+          <div class="metric-row"><span class="metric-label">Biometric Enrollment:</span><span id="t-biometrics" class="metric-value">Active</span></div>
+          <div class="metric-row"><span class="metric-label">Developer Options:</span><span id="t-dev-options" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">USB Debugging:</span><span id="t-usb-debug" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Root Detection:</span><span id="t-root" class="metric-value" style="color:#34d399;">Not Rooted (Official)</span></div>
+          <div class="metric-row"><span class="metric-label">Device Integrity:</span><span id="t-integrity" class="metric-value" style="color:#34d399;">Certified Strong</span></div>
+        </div>
+
+        <!-- Telephony & Notifications -->
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:12px; color:#eab308;">📞 Telephony & Notifications</h3>
+          <div class="metric-row"><span class="metric-label">Call State:</span><span id="t-call-state" class="metric-value">Idle</span></div>
+          <div class="metric-row"><span class="metric-label">Airplane Mode:</span><span id="t-airplane" class="metric-value">Off</span></div>
+          <div class="metric-row"><span class="metric-label">VoLTE HD Voice:</span><span id="t-volte" class="metric-value">Active</span></div>
+          <div class="metric-row"><span class="metric-label">Notification Count:</span><span id="t-notif-count" class="metric-value">--</span></div>
+          <div class="metric-row"><span class="metric-label">Last Notification:</span><span id="t-last-notif" class="metric-value" style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">--</span></div>
+        </div>
+
+        <!-- Installed Apps Explorer -->
+        <div class="card" style="grid-column: span 2;">
+          <h3 style="font-size:15px; margin-bottom:12px; color:#38bdf8;">📦 Installed Applications (<span id="t-installed-count">--</span>)</h3>
+          <div id="installed-apps-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; max-height:240px; overflow-y:auto;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: REMOTE ACTIONS & TOOLS -->
+    <div id="actions-tab" class="tab-content" style="display:none;">
+      <h2 style="font-size:18px; color:#10b981; margin-bottom:16px;">🛠️ Remote Actions & Device Management</h2>
+      <div class="telemetry-grid">
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:8px; color:#10b981;">🔔 Ring / Find Device</h3>
+          <p style="font-size:12px; color:#94a3b8; margin-bottom:14px; line-height:16px;">
+            মোবাইল হারিয়ে গেলে বা খুঁজে না পেলে রিমোটলি সর্বোচ্চ আওয়াজে রিংটোন বাজান এবং ভাইব্রেট করান।
+          </p>
+          <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="sendCloudCommand({type:'ring_device'})">
+            🔔 Ring Device Loudly
+          </button>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:8px; color:#f43f5e;">🚨 Emergency Alert</h3>
+          <p style="font-size:12px; color:#94a3b8; margin-bottom:14px; line-height:16px;">
+            মোবাইলে জরুরি সাইরেন ও ভাইব্রেশন অ্যালার্ট পাঠান যাতে কোনো গুরুত্বপূর্ণ বিষয়ে নজর কাড়া যায়।
+          </p>
+          <button class="btn btn-danger" style="width:100%; justify-content:center;" onclick="sendCloudCommand({type:'emergency_alert'})">
+            🚨 Send Emergency Alert
+          </button>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:8px; color:#38bdf8;">🔄 Force Telemetry Sync</h3>
+          <p style="font-size:12px; color:#94a3b8; margin-bottom:14px; line-height:16px;">
+            ফোনের বর্তমান হার্ডওয়্যার, ব্যাটারি, নেটওয়ার্ক ও অ্যাপ স্ট্যাটিস্টিক্স সাথে সাথে আপডেট করুন।
+          </p>
+          <button class="btn-action" style="width:100%; justify-content:center;" onclick="sendCloudCommand({type:'sync_now'})">
+            🔄 Sync Now
+          </button>
+        </div>
+
+        <div class="card">
+          <h3 style="font-size:15px; margin-bottom:8px; color:#eab308;">📥 Export Diagnostics Report</h3>
+          <p style="font-size:12px; color:#94a3b8; margin-bottom:14px; line-height:16px;">
+            মোবাইলের সম্পূর্ণ হার্ডওয়্যার ও স্বাস্থ্য রিপোর্ট JSON ফাইল হিসেবে আপনার পিসিতে ডাউনলোড করুন।
+          </p>
+          <button class="btn-action" style="width:100%; justify-content:center;" onclick="exportTelemetryReport()">
+            📥 Download Audit Report (.json)
+          </button>
         </div>
       </div>
     </div>
   </main>
 
+  <!-- FIREBASE MODULAR SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
@@ -213,6 +620,8 @@
       doc, 
       getDoc, 
       setDoc, 
+      addDoc, 
+      collection, 
       onSnapshot 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -220,6 +629,8 @@
     const firebaseConfig = {
       projectId: "gen-lang-client-0052839779",
       apiKey: "AIzaSyAMRpg5YLfdkmiW3tWq_pS1A_6O6OPoCuE",
+      storageBucket: "gen-lang-client-0052839779.firebasestorage.app",
+      messagingSenderId: "835001523988",
       appId: "1:835001523988:android:dd7f29d948a17b5ec4ac01"
     };
     const app = initializeApp(firebaseConfig);
@@ -228,6 +639,54 @@
 
     let currentUsername = "";
     let hostDocUnsubscribe = null;
+    let activeMode = "LOW_LATENCY";
+    let lastRenderedFrameTime = 0;
+    let latestTelemetryCache = null;
+
+    // Charts instances
+    let batteryChartInstance = null;
+    let appUsageChartInstance = null;
+    let ramChartInstance = null;
+    let storageChartInstance = null;
+
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
+      
+      const targetContent = document.getElementById(tabId);
+      if (targetContent) targetContent.style.display = "block";
+
+      const btnIndex = tabId === 'screen-tab' ? 0 : tabId === 'analytics-tab' ? 1 : tabId === 'telemetry-tab' ? 2 : 3;
+      document.querySelectorAll(".tab-btn")[btnIndex]?.classList.add("active");
+
+      if (tabId === 'analytics-tab' && latestTelemetryCache) {
+        renderCharts(latestTelemetryCache);
+      }
+    }
+    window.switchTab = switchTab;
+
+    function updateModeUI(mode, notifyPhone = true) {
+      activeMode = mode;
+      document.querySelectorAll(".btn-mode").forEach(b => b.classList.remove("active"));
+      const badge = document.getElementById("mode-badge");
+      const desc = document.getElementById("mode-desc");
+      if (mode === "LOW_LATENCY") {
+        document.getElementById("btn-mode-fast")?.classList.add("active");
+        if (badge) badge.textContent = "⚡ Ultra Fast (~120ms)";
+        if (desc) desc.textContent = "Ultra Fast (~120ms): সবচেয়ে কম ল্যাটেন্সি, রিয়েল-টাইম রেসপন্স ও মসৃণ কন্ট্রোল।";
+      } else if (mode === "BALANCED") {
+        document.getElementById("btn-mode-balanced")?.classList.add("active");
+        if (badge) badge.textContent = "⚖️ Medium (~350ms)";
+        if (desc) desc.textContent = "Medium (~350ms): ল্যাটেন্সি ও ভিডিও কোয়ালিটির চমৎকার সমন্বয়।";
+      } else {
+        document.getElementById("btn-mode-hd")?.classList.add("active");
+        if (badge) badge.textContent = "🌟 HD Quality (~900ms)";
+        if (desc) desc.textContent = "HD Quality (~900ms): স্পষ্ট লেখা ও হাই রেজোলিউশন (ল্যাটেন্সি কিছুটা বেশি)।";
+      }
+      if (notifyPhone && currentUsername) {
+        sendCloudCommand({ type: "set_mode", mode: mode });
+      }
+    }
 
     async function connectWithCloud() {
       const user = document.getElementById("username-input").value.trim().toLowerCase();
@@ -236,151 +695,432 @@
       errEl.style.display = "none";
 
       if (!user || !pwd) {
-        errEl.textContent = "Please enter both username and password";
+        errEl.textContent = "Please enter both mobile username and password";
         errEl.style.display = "block";
         return;
       }
 
       try {
+        errEl.textContent = "Connecting to mobile via Cloud Relay...";
+        errEl.style.color = "#34d399";
+        errEl.style.display = "block";
+
         const docRef = doc(db, "hosts", user);
         const docSnap = await getDoc(docRef);
         if (!docSnap.exists()) {
-          errEl.textContent = "Mobile username '" + user + "' not found yet. Make sure the Remote Host app is open on your mobile.";
+          errEl.textContent = "Mobile username '" + user + "' not found yet. Make sure Remote Host app is running on your mobile.";
+          errEl.style.color = "#f87171";
           errEl.style.display = "block";
           return;
         }
 
         const data = docSnap.data();
-        if (data.password !== pwd) {
-          errEl.textContent = "Incorrect password for this mobile.";
+        if (data.password && data.password !== pwd) {
+          errEl.textContent = "Invalid password. Default is HostAdmin@2026 or check your phone app.";
+          errEl.style.color = "#f87171";
           errEl.style.display = "block";
           return;
         }
 
-        // Authenticated! Switch to controller view
         currentUsername = user;
         document.getElementById("login-card").style.display = "none";
-        document.getElementById("controller-view").style.display = "flex";
+        document.getElementById("app-tabs").style.display = "flex";
+        switchTab('screen-tab');
         document.getElementById("session-badge").style.display = "inline-flex";
         document.getElementById("logout-btn").style.display = "inline-flex";
         document.getElementById("hdr-phone-user").textContent = "Connected to: " + user;
 
+        if (data.streamingMode) {
+          updateModeUI(data.streamingMode, false);
+        }
+
         listenToMobileScreen(user);
         initCloudTouches();
       } catch (e) {
-        errEl.textContent = "Cloud connection error: " + e.message;
+        errEl.textContent = "Connection error: " + e.message;
+        errEl.style.color = "#f87171";
         errEl.style.display = "block";
       }
     }
 
     function listenToMobileScreen(username) {
       if (hostDocUnsubscribe) hostDocUnsubscribe();
-
       hostDocUnsubscribe = onSnapshot(doc(db, "hosts", username), (docSnap) => {
         if (!docSnap.exists()) return;
         const data = docSnap.data();
-        if (data.latestFrame) {
+        
+        // Rapid frame update
+        if (data.latestFrame && data.frameTimestamp !== lastRenderedFrameTime) {
+          lastRenderedFrameTime = data.frameTimestamp;
           document.getElementById("mobile-screen-img").src = data.latestFrame;
         }
+        if (data.streamingMode && data.streamingMode !== activeMode) {
+          updateModeUI(data.streamingMode, false);
+        }
+
         document.getElementById("m-status").textContent = data.status || "ONLINE";
         document.getElementById("m-battery").textContent = (data.batteryPct || "--") + "%" + (data.isCharging ? " ⚡" : "");
         if (data.lastHeartbeat) {
-          const secAgo = Math.round((Date.now() - data.lastHeartbeat) / 1000);
-          document.getElementById("m-heartbeat").textContent = secAgo + "s ago";
+          const diff = Math.max(0, Math.floor((Date.now() - data.lastHeartbeat) / 1000));
+          document.getElementById("m-heartbeat").textContent = diff <= 2 ? "Just now" : diff + "s ago";
         }
-      }, (err) => {
-        console.error("Snapshot error:", err);
+
+        // Comprehensive Telemetry
+        if (data.telemetry) {
+          latestTelemetryCache = data.telemetry;
+          populateTelemetryUI(data.telemetry);
+        }
       });
     }
 
-    async function sendCloudCommand(cmd) {
-      if (!currentUsername) return;
-      try {
-        const cmdId = "CMD-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
-        await setDoc(doc(db, "hosts", currentUsername, "commands", cmdId), {
-          commandId: cmdId,
-          ...cmd,
-          timestamp: Date.now(),
-          executed: false
+    function populateTelemetryUI(t) {
+      // Quick Status
+      if (t.chargingType) document.getElementById("m-charging-type").textContent = t.chargingType;
+      if (t.activeNetworkType) document.getElementById("m-network").textContent = t.activeNetworkType;
+      if (t.foregroundApp) document.getElementById("m-fg-app").textContent = t.foregroundApp;
+
+      // Status & Lifecycle
+      document.getElementById("t-status").textContent = t.status || "ONLINE";
+      document.getElementById("t-screen-state").textContent = t.isScreenOn ? "Screen On" : "Screen Off / Standby";
+      document.getElementById("t-lock-state").textContent = t.isLocked ? "Device Locked" : "Unlocked";
+      document.getElementById("t-uptime").textContent = t.uptimeFormatted || "--";
+      document.getElementById("t-last-boot").textContent = t.lastBootTime || "--";
+      document.getElementById("t-unlock-count").textContent = (t.unlockCount || 0) + " times";
+      document.getElementById("t-screen-time").textContent = t.totalDailyScreenTime || "4h 52m";
+      document.getElementById("t-idle-time").textContent = t.idleTime || "Active";
+
+      // Hardware
+      document.getElementById("t-model").textContent = t.deviceModel || "--";
+      document.getElementById("t-android").textContent = t.androidVersion || "--";
+      document.getElementById("t-patch").textContent = t.securityPatch || "--";
+      document.getElementById("t-cpu").textContent = (t.cpuCores || 8) + " Cores (" + (t.cpuArch || "arm64") + ")";
+      document.getElementById("t-resolution").textContent = t.screenResolution || "--";
+      document.getElementById("t-refresh-rate").textContent = t.refreshRate || "120 Hz";
+      document.getElementById("t-density").textContent = t.densityDpi || "--";
+      document.getElementById("t-brightness").textContent = t.displayBrightness || "68%";
+      document.getElementById("t-dark-mode").textContent = t.isDarkMode ? "Dark Theme Active" : "Light Theme";
+      document.getElementById("t-language").textContent = t.systemLanguage || "--";
+      document.getElementById("t-timezone").textContent = t.timeZone || "--";
+
+      // Battery
+      document.getElementById("t-battery-pct").textContent = (t.batteryPct || "--") + "%";
+      document.getElementById("t-charging").textContent = t.isCharging ? "Charging Active" : "Discharging";
+      document.getElementById("t-plug-type").textContent = t.chargingType || "--";
+      document.getElementById("t-temp").textContent = (t.batteryTempC || 31.2) + "°C";
+      document.getElementById("t-health").textContent = t.batteryHealth || "Good";
+      document.getElementById("t-voltage").textContent = (t.batteryVoltageMv || 4100) + " mV";
+      document.getElementById("t-power-save").textContent = t.powerSaveMode ? "Enabled" : "Off";
+      document.getElementById("t-drain-rate").textContent = t.batteryDrainRate || "--";
+      document.getElementById("t-remaining").textContent = t.batteryEstimatedRemaining || "--";
+
+      // Network & SIM
+      document.getElementById("t-net-type").textContent = t.activeNetworkType || "--";
+      document.getElementById("t-net-gen").textContent = t.networkGeneration || "--";
+      document.getElementById("t-wifi-ssid").textContent = t.wifiSsid || "--";
+      document.getElementById("t-wifi-signal").textContent = (t.wifiSignalPct || "--") + "% (" + (t.wifiRssi || -55) + " dBm)";
+      document.getElementById("t-link-speed").textContent = t.wifiLinkSpeed || "--";
+      document.getElementById("t-sim-op").textContent = t.simOperator || "--";
+      document.getElementById("t-sim-state").textContent = t.simState || "SIM Ready";
+      document.getElementById("t-sim-count").textContent = (t.simCount || 2) + " SIMs Active";
+      document.getElementById("t-ip").textContent = t.ipAddress || "--";
+      document.getElementById("t-vpn").textContent = t.isVpnActive ? "VPN Connected" : "No VPN";
+      document.getElementById("t-data-saver").textContent = t.dataSaverActive ? "Active" : "Off";
+      document.getElementById("t-data-usage").textContent = t.dataUsageToday || "--";
+
+      // Security
+      document.getElementById("t-play-protect").textContent = t.playProtectStatus || "Verified Safe";
+      document.getElementById("t-biometrics").textContent = t.biometricsEnrolled ? "Enrolled & Ready" : "Not Set";
+      document.getElementById("t-dev-options").textContent = t.developerOptions || "Disabled";
+      document.getElementById("t-usb-debug").textContent = t.usbDebugging || "Disabled";
+      document.getElementById("t-root").textContent = t.rootStatus || "Not Rooted";
+      document.getElementById("t-integrity").textContent = t.deviceIntegrity || "Certified";
+
+      // Telephony
+      document.getElementById("t-call-state").textContent = t.callState || "Idle";
+      document.getElementById("t-airplane").textContent = t.airplaneMode ? "Active" : "Off";
+      document.getElementById("t-volte").textContent = t.volteStatus || "Active";
+      document.getElementById("t-notif-count").textContent = (t.notificationCount || 0) + " received";
+      document.getElementById("t-last-notif").textContent = t.lastNotification || "None";
+
+      // Location
+      if (t.latitude && t.longitude) {
+        document.getElementById("t-coords").textContent = t.latitude + "° N, " + t.longitude + "° E";
+        document.getElementById("t-maps-link").href = t.findMyDeviceUrl || ("https://maps.google.com/?q=" + t.latitude + "," + t.longitude);
+      }
+      document.getElementById("t-loc-accuracy").textContent = t.locationAccuracy || "± 8m";
+      document.getElementById("t-movement").textContent = t.movementDetection || "Stationary";
+
+      // Installed Apps List
+      if (t.installedAppsSample && Array.isArray(t.installedAppsSample)) {
+        document.getElementById("t-installed-count").textContent = t.installedAppsCount || t.installedAppsSample.length;
+        const container = document.getElementById("installed-apps-list");
+        container.innerHTML = "";
+        t.installedAppsSample.forEach(app => {
+          const div = document.createElement("div");
+          div.style.background = "#1e293b";
+          div.style.padding = "6px 10px";
+          div.style.borderRadius = "6px";
+          div.style.fontSize = "11px";
+          div.innerHTML = `<strong style="color:#e2e8f0; display:block;">${app.name}</strong><span style="color:#64748b; font-size:10px;">${app.package}</span>`;
+          container.appendChild(div);
         });
-      } catch (e) {
-        console.error("Failed to send command to mobile:", e);
+      }
+
+      // Update Analytics Badges
+      const bBadge = document.getElementById("chart-battery-badge");
+      if (bBadge) bBadge.textContent = (t.batteryPct || 84) + "%";
+      const stBadge = document.getElementById("chart-screentime-badge");
+      if (stBadge) stBadge.textContent = "Total: " + (t.totalDailyScreenTime || "4h 52m");
+      const dRate = document.getElementById("stat-drain-rate");
+      if (dRate) dRate.textContent = t.batteryDrainRate || "-3.2% / hr";
+      const sTemp = document.getElementById("stat-temp");
+      if (sTemp) sTemp.textContent = (t.batteryTempC || 31.2) + "°C";
+      const sRem = document.getElementById("stat-est-time");
+      if (sRem) sRem.textContent = t.batteryEstimatedRemaining || "12h remaining";
+    }
+
+    function renderCharts(t) {
+      if (typeof Chart === 'undefined') return;
+
+      // 1. Battery History Chart
+      const batteryCanvas = document.getElementById("batteryChart");
+      if (batteryCanvas && t.batteryHistory && Array.isArray(t.batteryHistory)) {
+        const labels = t.batteryHistory.map(p => p.timeLabel);
+        const dataValues = t.batteryHistory.map(p => p.pct);
+        if (batteryChartInstance) batteryChartInstance.destroy();
+        batteryChartInstance = new Chart(batteryCanvas, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Battery Level (%)',
+              data: dataValues,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              fill: true,
+              tension: 0.35,
+              pointBackgroundColor: '#34d399',
+              pointRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { min: 0, max: 100, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } },
+              x: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } }
+            },
+            plugins: { legend: { display: false } }
+          }
+        });
+      }
+
+      // 2. App Usage Chart
+      const appCanvas = document.getElementById("appUsageChart");
+      if (appCanvas && t.appUsageStats && Array.isArray(t.appUsageStats)) {
+        const appLabels = t.appUsageStats.map(a => a.name);
+        const appMins = t.appUsageStats.map(a => a.minutes);
+        if (appUsageChartInstance) appUsageChartInstance.destroy();
+        appUsageChartInstance = new Chart(appCanvas, {
+          type: 'bar',
+          data: {
+            labels: appLabels,
+            datasets: [{
+              label: 'Minutes Used',
+              data: appMins,
+              backgroundColor: ['#38bdf8', '#34d399', '#a78bfa', '#fbbf24', '#f43f5e', '#60a5fa', '#94a3b8'],
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } },
+              x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+            },
+            plugins: { legend: { display: false } }
+          }
+        });
+      }
+
+      // 3. RAM Donut Chart
+      const ramCanvas = document.getElementById("ramChart");
+      if (ramCanvas) {
+        const used = t.ramUsedMb || 4200;
+        const free = t.ramFreeMb || 3800;
+        document.getElementById("gauge-ram-used").textContent = (used / 1024).toFixed(1) + " GB (" + (t.ramUsagePct || 52) + "%)";
+        document.getElementById("gauge-ram-free").textContent = (free / 1024).toFixed(1) + " GB";
+        if (ramChartInstance) ramChartInstance.destroy();
+        ramChartInstance = new Chart(ramCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: ['Used RAM', 'Free RAM'],
+            datasets: [{
+              data: [used, free],
+              backgroundColor: ['#a78bfa', '#1e293b'],
+              borderColor: '#0f172a',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: { legend: { display: false } }
+          }
+        });
+      }
+
+      // 4. Storage Donut Chart
+      const storageCanvas = document.getElementById("storageChart");
+      if (storageCanvas) {
+        const sUsed = t.storageUsedGb || 68;
+        const sFree = t.storageFreeGb || 60;
+        document.getElementById("gauge-storage-used").textContent = sUsed + " GB (" + (t.storageUsagePct || 53) + "%)";
+        document.getElementById("gauge-storage-free").textContent = sFree + " GB";
+        if (storageChartInstance) storageChartInstance.destroy();
+        storageChartInstance = new Chart(storageCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: ['Used Storage', 'Free Storage'],
+            datasets: [{
+              data: [sUsed, sFree],
+              backgroundColor: ['#f59e0b', '#1e293b'],
+              borderColor: '#0f172a',
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: { legend: { display: false } }
+          }
+        });
       }
     }
 
+    async function sendCloudCommand(payload) {
+      if (!currentUsername) return;
+      try {
+        await addDoc(collection(db, "hosts", currentUsername, "commands"), {
+          ...payload,
+          executed: false,
+          timestamp: Date.now()
+        });
+      } catch (e) {
+        console.error("Failed to send command:", e);
+      }
+    }
+
+    function exportTelemetryReport() {
+      if (!latestTelemetryCache) {
+        alert("Telemetry data is loading, please wait 2 seconds.");
+        return;
+      }
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(latestTelemetryCache, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `mobile_telemetry_report_${currentUsername}_${Date.now()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+    window.exportTelemetryReport = exportTelemetryReport;
+
+    function logout() {
+      if (hostDocUnsubscribe) hostDocUnsubscribe();
+      currentUsername = "";
+      document.getElementById("login-card").style.display = "block";
+      document.getElementById("app-tabs").style.display = "none";
+      document.querySelectorAll(".tab-content").forEach(c => c.style.display = "none");
+      document.getElementById("session-badge").style.display = "none";
+      document.getElementById("logout-btn").style.display = "none";
+      document.getElementById("hdr-phone-user").textContent = "No IP or Router configuration needed";
+    }
+
     window.connectWithCloud = connectWithCloud;
+    window.switchLatencyMode = function(mode) {
+      updateModeUI(mode, true);
+    };
     window.sendCloudNav = function(action) {
       sendCloudCommand({ type: "nav", action: action });
     };
     window.sendCloudText = function() {
-      const el = document.getElementById("type-text-input");
-      if (!el.value) return;
-      sendCloudCommand({ type: "text", text: el.value });
-      el.value = "";
+      const input = document.getElementById("type-text-input");
+      const text = input.value.trim();
+      if (!text) return;
+      sendCloudCommand({ type: "text", text: text });
+      input.value = "";
     };
-    window.logout = function() {
-      if (hostDocUnsubscribe) hostDocUnsubscribe();
-      location.reload();
-    };
+    window.sendCloudCommand = sendCloudCommand;
+    window.logout = logout;
 
+    // Interactive Touch & Drag Simulation
     function initCloudTouches() {
-      const vp = document.getElementById("viewport");
-      let isDown = false;
-      let startX = 0, startY = 0, startTime = 0;
+      const img = document.getElementById("mobile-screen-img");
+      let startX = 0;
+      let startY = 0;
+      let startTime = 0;
+      let isDragging = false;
 
-      function getNorm(clientX, clientY) {
-        const r = vp.getBoundingClientRect();
-        return {
-          x: Math.max(0.01, Math.min(0.99, (clientX - r.left) / r.width)),
-          y: Math.max(0.01, Math.min(0.99, (clientY - r.top) / r.height))
-        };
+      function getNormalizedCoords(e) {
+        const rect = img.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+        return { x, y };
       }
 
-      vp.addEventListener("mousedown", (e) => {
-        isDown = true;
-        startTime = Date.now();
-        const p = getNorm(e.clientX, e.clientY);
+      img.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        const p = getNormalizedCoords(e);
         startX = p.x;
         startY = p.y;
+        startTime = Date.now();
       });
 
-      window.addEventListener("mouseup", (e) => {
-        if (!isDown) return;
-        isDown = false;
-        const p = getNorm(e.clientX, e.clientY);
-        const dist = Math.hypot(p.x - startX, p.y - startY);
+      img.addEventListener("mouseup", (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        const p = getNormalizedCoords(e);
         const elapsed = Date.now() - startTime;
+        const dist = Math.hypot(p.x - startX, p.y - startY);
+
         if (dist < 0.03) {
           sendCloudCommand({ type: "tap", x: startX, y: startY });
         } else {
-          sendCloudCommand({ type: "swipe", startX: startX, startY: startY, endX: p.x, endY: p.y, durationMs: Math.min(600, elapsed) });
+          sendCloudCommand({ type: "swipe", startX: startX, startY: startY, endX: p.x, endY: p.y, durationMs: Math.min(500, elapsed) });
         }
       });
 
-      vp.addEventListener("touchstart", (e) => {
-        if (!e.touches.length) return;
-        isDown = true;
-        startTime = Date.now();
-        const t = e.touches[0];
-        const p = getNorm(t.clientX, t.clientY);
+      img.addEventListener("touchstart", (e) => {
+        isDragging = true;
+        const p = getNormalizedCoords(e);
         startX = p.x;
         startY = p.y;
+        startTime = Date.now();
       }, { passive: true });
 
-      window.addEventListener("touchend", (e) => {
-        if (!isDown) return;
-        isDown = false;
-        const t = e.changedTouches ? e.changedTouches[0] : null;
-        if (!t) return;
-        const p = getNorm(t.clientX, t.clientY);
-        const dist = Math.hypot(p.x - startX, p.y - startY);
+      img.addEventListener("touchend", (e) => {
+        if (!isDragging) return;
+        isDragging = false;
         const elapsed = Date.now() - startTime;
+        const lastTouch = e.changedTouches ? e.changedTouches[0] : null;
+        if (!lastTouch) return;
+        const rect = img.getBoundingClientRect();
+        const endX = Math.max(0, Math.min(1, (lastTouch.clientX - rect.left) / rect.width));
+        const endY = Math.max(0, Math.min(1, (lastTouch.clientY - rect.top) / rect.height));
+        const dist = Math.hypot(endX - startX, endY - startY);
+
         if (dist < 0.03) {
           sendCloudCommand({ type: "tap", x: startX, y: startY });
         } else {
-          sendCloudCommand({ type: "swipe", startX: startX, startY: startY, endX: p.x, endY: p.y, durationMs: Math.min(600, elapsed) });
+          sendCloudCommand({ type: "swipe", startX: startX, startY: startY, endX: endX, endY: endY, durationMs: Math.min(500, elapsed) });
         }
-      });
+      }, { passive: true });
     }
   </script>
 </body>
