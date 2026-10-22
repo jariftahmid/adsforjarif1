@@ -9,7 +9,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       background: #090d16;
       color: #e2e8f0;
       min-height: 100vh;
@@ -29,7 +29,11 @@
       top: 0;
       z-index: 100;
     }
-    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
     .brand-icon {
       width: 32px;
       height: 32px;
@@ -132,6 +136,7 @@
       border: 1px solid #10b981;
       box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
     }
+    /* Navigation Bar Tabs */
     .tab-bar {
       display: flex;
       gap: 6px;
@@ -162,6 +167,7 @@
       border-color: #10b981;
       box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
     }
+
     main {
       flex: 1;
       padding: 24px;
@@ -188,6 +194,8 @@
       outline: none;
     }
     .input-text:focus { border-color: #10b981; }
+
+    /* Screen container */
     .screen-container {
       width: 340px;
       background: #000;
@@ -217,7 +225,12 @@
       user-select: none;
       -webkit-user-drag: none;
     }
-    .nav-bar { display: flex; gap: 8px; width: 100%; margin-top: 10px; }
+    .nav-bar {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      margin-top: 10px;
+    }
     .side-panel {
       flex: 1;
       min-width: 320px;
@@ -226,6 +239,8 @@
       flex-direction: column;
       gap: 16px;
     }
+
+    /* Metric Grid & Rows */
     .metric-row {
       display: flex;
       justify-content: space-between;
@@ -237,6 +252,8 @@
     .metric-row:last-child { border-bottom: none; }
     .metric-label { color: #94a3b8; display: flex; align-items: center; gap: 6px; }
     .metric-value { font-weight: 600; color: #f8fafc; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    /* Grid for Telemetry Cards */
     .telemetry-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -247,6 +264,19 @@
       height: 220px;
       width: 100%;
       margin-top: 10px;
+    }
+    .progress-bar-bg {
+      background: #1e293b;
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: #10b981;
+      border-radius: 99px;
+      transition: width 0.5s ease;
     }
   </style>
 </head>
@@ -265,7 +295,7 @@
     </div>
   </header>
 
-  <!-- TAB NAVIGATION -->
+  <!-- TAB NAVIGATION (VISIBLE ONCE LOGGED IN) -->
   <nav id="app-tabs" class="tab-bar" style="display:none;">
     <button class="tab-btn active" onclick="switchTab('screen-tab')">📱 Live Remote Screen</button>
     <button class="tab-btn" onclick="switchTab('analytics-tab')">📊 Analytics & Graphs</button>
@@ -282,10 +312,10 @@
       </p>
 
       <label style="font-size: 12px; color: #a7f3d0; font-weight: 600; display:block; margin-bottom:4px;">Mobile User ID (Username):</label>
-      <input type="text" id="username-input" class="input-text" placeholder="e.g. myphone-xxxxxx">
+      <input type="text" id="username-input" class="input-text" placeholder="e.g. myphone-6698b7" onkeydown="if(event.key==='Enter')connectWithCloud()">
 
       <label style="font-size: 12px; color: #a7f3d0; font-weight: 600; display:block; margin-bottom:4px;">Password (ডিফল্ট: HostAdmin@2026):</label>
-      <input type="password" id="password-input" class="input-text" placeholder="Enter mobile password">
+      <input type="password" id="password-input" class="input-text" placeholder="Enter mobile password" onkeydown="if(event.key==='Enter')connectWithCloud()">
 
       <div id="auth-err" style="display:none; color:#f87171; font-size:12px; margin-bottom:12px; background: rgba(239,68,68,0.1); padding: 8px; border-radius: 6px;"></div>
 
@@ -302,16 +332,19 @@
           <div class="viewport" id="viewport">
             <img id="mobile-screen-img" src="" alt="Waiting for mobile screen stream...">
           </div>
-          <div class="nav-bar">
-            <button class="btn-nav" onclick="sendCloudNav('BACK')">◀ BACK</button>
-            <button class="btn-nav" onclick="sendCloudNav('HOME')">● HOME</button>
-            <button class="btn-nav" onclick="sendCloudNav('RECENTS')">■ RECENTS</button>
+          <div class="nav-bar" style="flex-wrap: wrap;">
+            <button class="btn-nav" onclick="sendCloudNav('BACK')" title="Back">◀ BACK</button>
+            <button class="btn-nav" onclick="sendCloudNav('HOME')" title="Home">● HOME</button>
+            <button class="btn-nav" onclick="sendCloudNav('RECENTS')" title="Recent Apps">■ RECENTS</button>
+            <button class="btn-nav" onclick="sendCloudNav('NOTIFICATIONS')" title="Pull Notifications">🔔 NOTIF</button>
+            <button class="btn-nav" onclick="wakeDeviceScreen()" style="color:#38bdf8; font-weight:bold;" title="Turn screen on remotely">💡 WAKE</button>
+            <button class="btn-nav" onclick="sendCloudNav('LOCK')" style="color:#f87171;" title="Lock device screen">🔒 LOCK</button>
           </div>
         </div>
 
         <!-- Controls Side Panel -->
         <div class="side-panel">
-          <!-- 3-MODE STREAMING LATENCY CARD (CONTROLLED FROM WEB) -->
+          <!-- 3-MODE STREAMING LATENCY CARD -->
           <div class="card" style="border: 1px solid rgba(16, 185, 129, 0.4);">
             <h3 style="font-size:14px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
               <span style="color:#10b981;">⚡ Speed & Latency Mode</span>
@@ -354,13 +387,16 @@
               <span class="metric-label">Last Heartbeat:</span>
               <span id="m-heartbeat" class="metric-value">Just now</span>
             </div>
+            <div style="margin-top:10px; display:flex; gap:6px;">
+              <button class="btn btn-outline" style="flex:1; padding:6px 10px; font-size:11px; justify-content:center;" onclick="sendCloudCommand({ type: 'sync_now' })">🔄 Ping / Refresh Heartbeat</button>
+            </div>
           </div>
 
           <!-- Remote Keyboard Input -->
           <div class="card">
             <h3 style="font-size:15px; margin-bottom:10px;">Remote Keyboard</h3>
             <div style="display:flex; gap:8px;">
-              <input type="text" id="type-text-input" class="input-text" style="margin-bottom:0;" placeholder="Type text to send to phone...">
+              <input type="text" id="type-text-input" class="input-text" style="margin-bottom:0;" placeholder="Type text to send to phone..." onkeydown="if(event.key==='Enter')sendCloudText()">
               <button class="btn btn-primary" onclick="sendCloudText()">Send</button>
             </div>
           </div>
@@ -460,7 +496,7 @@
       </div>
 
       <div class="telemetry-grid">
-        <!-- Status & Lifecycle -->
+        <!-- 1. Device Lifecycle & Status -->
         <div class="card">
           <h3 style="font-size:15px; margin-bottom:12px; color:#10b981;">🔄 Status & Lifecycle</h3>
           <div class="metric-row"><span class="metric-label">Online/Offline Status:</span><span id="t-status" class="metric-value" style="color:#34d399;">ONLINE</span></div>
@@ -473,7 +509,7 @@
           <div class="metric-row"><span class="metric-label">Idle Time:</span><span id="t-idle-time" class="metric-value">Active</span></div>
         </div>
 
-        <!-- Hardware & System Specs -->
+        <!-- 2. Hardware & System Specs -->
         <div class="card">
           <h3 style="font-size:15px; margin-bottom:12px; color:#38bdf8;">⚙️ Hardware & System</h3>
           <div class="metric-row"><span class="metric-label">Device Model:</span><span id="t-model" class="metric-value">--</span></div>
@@ -489,7 +525,7 @@
           <div class="metric-row"><span class="metric-label">Time Zone:</span><span id="t-timezone" class="metric-value">--</span></div>
         </div>
 
-        <!-- Battery Health & Power -->
+        <!-- 3. Battery Health & Power -->
         <div class="card">
           <h3 style="font-size:15px; margin-bottom:12px; color:#fbbf24;">⚡ Battery Health & Power</h3>
           <div class="metric-row"><span class="metric-label">Battery Level:</span><span id="t-battery-pct" class="metric-value" style="color:#34d399;">--%</span></div>
@@ -503,7 +539,7 @@
           <div class="metric-row"><span class="metric-label">Estimated Remaining:</span><span id="t-remaining" class="metric-value">--</span></div>
         </div>
 
-        <!-- Network & SIM Details -->
+        <!-- 4. Network & SIM Details -->
         <div class="card">
           <h3 style="font-size:15px; margin-bottom:12px; color:#a78bfa;">🌐 Network & SIM Telemetry</h3>
           <div class="metric-row"><span class="metric-label">Active Network:</span><span id="t-net-type" class="metric-value">--</span></div>
@@ -520,7 +556,7 @@
           <div class="metric-row"><span class="metric-label">Today's Data Usage:</span><span id="t-data-usage" class="metric-value">--</span></div>
         </div>
 
-        <!-- Location & Sensor Telemetry -->
+        <!-- 5. Location & Sensor Telemetry -->
         <div class="card">
           <h3 style="font-size:15px; margin-bottom:12px; color:#f43f5e;">📍 Location & GPS Telemetry</h3>
           <div class="metric-row"><span class="metric-label">GPS Status:</span><span id="t-gps" class="metric-value">High Accuracy Active</span></div>
@@ -534,7 +570,7 @@
           </div>
         </div>
 
-        <!-- Security & Device Integrity -->
+        <!-- 6. Security & Device Integrity -->
         <div class="card">
           <h3 style="font-size:15px; margin-bottom:12px; color:#10b981;">🛡️ Security & Integrity</h3>
           <div class="metric-row"><span class="metric-label">Play Protect:</span><span id="t-play-protect" class="metric-value" style="color:#34d399;">Verified Safe</span></div>
@@ -545,7 +581,7 @@
           <div class="metric-row"><span class="metric-label">Device Integrity:</span><span id="t-integrity" class="metric-value" style="color:#34d399;">Certified Strong</span></div>
         </div>
 
-        <!-- Telephony & Notifications -->
+        <!-- 7. Telephony & Notifications -->
         <div class="card">
           <h3 style="font-size:15px; margin-bottom:12px; color:#eab308;">📞 Telephony & Notifications</h3>
           <div class="metric-row"><span class="metric-label">Call State:</span><span id="t-call-state" class="metric-value">Idle</span></div>
@@ -555,7 +591,7 @@
           <div class="metric-row"><span class="metric-label">Last Notification:</span><span id="t-last-notif" class="metric-value" style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">--</span></div>
         </div>
 
-        <!-- Installed Apps Explorer -->
+        <!-- 8. Installed Apps Explorer -->
         <div class="card" style="grid-column: span 2;">
           <h3 style="font-size:15px; margin-bottom:12px; color:#38bdf8;">📦 Installed Applications (<span id="t-installed-count">--</span>)</h3>
           <div id="installed-apps-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; max-height:240px; overflow-y:auto;">
@@ -625,23 +661,141 @@
       onSnapshot 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Firebase Cloud configuration provisioned for this app
     const firebaseConfig = {
-      projectId: "gen-lang-client-0052839779",
-      apiKey: "AIzaSyAMRpg5YLfdkmiW3tWq_pS1A_6O6OPoCuE",
-      storageBucket: "gen-lang-client-0052839779.firebasestorage.app",
-      messagingSenderId: "835001523988",
-      appId: "1:835001523988:android:dd7f29d948a17b5ec4ac01"
+      projectId: "gen-lang-client-0207504087",
+      apiKey: "AIzaSyDD2g-SUN19NHoKWSs0dA_PHzGKmz7gLCo",
+      storageBucket: "gen-lang-client-0207504087.firebasestorage.app",
+      messagingSenderId: "396481062530",
+      appId: "1:396481062530:android:c18e28a2ab6e594ac6769b"
     };
     const app = initializeApp(firebaseConfig);
-    // Explicit named Firestore database ID
-    const db = getFirestore(app, "ai-studio-android-remoteho-62368fa1-0461-462b-9312-02bfbe8fae80");
+
+    // Direct REST API & Modular SDK configuration
+    const FIRESTORE_PROJECT_ID = "gen-lang-client-0207504087";
+    const FIRESTORE_DB_ID = "ai-studio-android-remoteho-62368fa1-0461-462b-9312-02bfbe8fae80";
+    const FIRESTORE_API_KEY = "AIzaSyDD2g-SUN19NHoKWSs0dA_PHzGKmz7gLCo";
+
+    // Support both primary named database and default database for 100% resilience
+    const namedDbId = FIRESTORE_DB_ID;
+    let dbNamed = null;
+    let dbDefault = null;
+    try {
+      dbNamed = getFirestore(app, namedDbId);
+    } catch(e) {
+      console.warn("Named db init note:", e);
+    }
+    try {
+      dbDefault = getFirestore(app);
+    } catch(e) {
+      console.warn("Default db init note:", e);
+    }
+    let db = dbNamed || dbDefault;
+
+    // REST helpers for 100% reliable document reading & writing in browser/iframe
+    function wrapToFirestoreField(v) {
+      if (v === null || v === undefined) return { nullValue: null };
+      if (typeof v === "boolean") return { booleanValue: v };
+      if (typeof v === "number") {
+        if (Number.isInteger(v)) return { integerValue: v.toString() };
+        return { doubleValue: v };
+      }
+      if (typeof v === "string") return { stringValue: v };
+      if (Array.isArray(v)) return { arrayValue: { values: v.map(wrapToFirestoreField) } };
+      if (typeof v === "object") {
+        const fields = {};
+        for (const key in v) {
+          if (Object.prototype.hasOwnProperty.call(v, key)) {
+            fields[key] = wrapToFirestoreField(v[key]);
+          }
+        }
+        return { mapValue: { fields } };
+      }
+      return { stringValue: String(v) };
+    }
+
+    function unwrapFirestoreValue(val) {
+      if (!val) return null;
+      if (val.stringValue !== undefined) return val.stringValue;
+      if (val.integerValue !== undefined) return parseInt(val.integerValue, 10);
+      if (val.doubleValue !== undefined) return parseFloat(val.doubleValue);
+      if (val.booleanValue !== undefined) return val.booleanValue;
+      if (val.timestampValue !== undefined) return val.timestampValue;
+      if (val.mapValue !== undefined) {
+        const res = {};
+        const fields = val.mapValue.fields || {};
+        for (const k in fields) {
+          res[k] = unwrapFirestoreValue(fields[k]);
+        }
+        return res;
+      }
+      if (val.arrayValue !== undefined) {
+        const list = val.arrayValue.values || [];
+        return list.map(unwrapFirestoreValue);
+      }
+      return null;
+    }
+
+    function parseFirestoreDoc(docObj) {
+      if (!docObj || !docObj.fields) return null;
+      const res = {};
+      for (const k in docObj.fields) {
+        res[k] = unwrapFirestoreValue(docObj.fields[k]);
+      }
+      return res;
+    }
+
+    async function fetchHostViaRest(username) {
+      const url = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/${FIRESTORE_DB_ID}/documents/hosts/${encodeURIComponent(username)}?key=${FIRESTORE_API_KEY}`;
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (res.status === 200) {
+          const json = await res.json();
+          return parseFirestoreDoc(json);
+        }
+      } catch (e) {
+        console.warn("fetchHostViaRest error:", e);
+      }
+      return null;
+    }
 
     let currentUsername = "";
     let hostDocUnsubscribe = null;
+    let livePollingTimer = null;
     let activeMode = "LOW_LATENCY";
     let lastRenderedFrameTime = 0;
     let latestTelemetryCache = null;
+    let lastKnownHeartbeat = 0;
+    let lastKnownScreenOn = true;
+    let lastKnownStatus = "ONLINE";
+
+    setInterval(() => {
+      if (!lastKnownHeartbeat) return;
+      const hbEl = document.getElementById("m-heartbeat");
+      const statusEl = document.getElementById("m-status");
+      if (!hbEl || !statusEl) return;
+      const diff = Math.max(0, Math.floor((Date.now() - lastKnownHeartbeat) / 1000));
+      if (diff <= 7) {
+        hbEl.textContent = "Just now (" + diff + "s)";
+        hbEl.style.color = "#34d399";
+        if (lastKnownScreenOn === false) {
+          statusEl.textContent = "STANDBY (Screen Off)";
+          statusEl.style.color = "#fbbf24";
+        } else {
+          statusEl.textContent = lastKnownStatus || "ONLINE";
+          statusEl.style.color = "#34d399";
+        }
+      } else if (diff <= 30) {
+        hbEl.textContent = diff + "s ago";
+        hbEl.style.color = "#fbbf24";
+        statusEl.textContent = "IDLE / STANDBY";
+        statusEl.style.color = "#fbbf24";
+      } else {
+        hbEl.textContent = diff + "s ago (Inactive / Asleep)";
+        hbEl.style.color = "#f87171";
+        statusEl.textContent = "DISCONNECTED / ASLEEP";
+        statusEl.style.color = "#f87171";
+      }
+    }, 1000);
 
     // Charts instances
     let batteryChartInstance = null;
@@ -665,6 +819,12 @@
     }
     window.switchTab = switchTab;
 
+    function getPollingIntervalMs() {
+      if (activeMode === "LOW_LATENCY") return 220;
+      if (activeMode === "BALANCED") return 450;
+      return 850;
+    }
+
     function updateModeUI(mode, notifyPhone = true) {
       activeMode = mode;
       document.querySelectorAll(".btn-mode").forEach(b => b.classList.remove("active"));
@@ -685,6 +845,9 @@
       }
       if (notifyPhone && currentUsername) {
         sendCloudCommand({ type: "set_mode", mode: mode });
+        if (livePollingTimer) {
+          startLiveStream(currentUsername);
+        }
       }
     }
 
@@ -700,77 +863,184 @@
         return;
       }
 
-      try {
-        errEl.textContent = "Connecting to mobile via Cloud Relay...";
-        errEl.style.color = "#34d399";
-        errEl.style.display = "block";
+      errEl.textContent = `Connecting to mobile '${user}' via Cloud Relay...`;
+      errEl.style.color = "#34d399";
+      errEl.style.display = "block";
 
-        const docRef = doc(db, "hosts", user);
-        const docSnap = await getDoc(docRef);
-        if (!docSnap.exists()) {
-          errEl.textContent = "Mobile username '" + user + "' not found yet. Make sure Remote Host app is running on your mobile.";
-          errEl.style.color = "#f87171";
-          errEl.style.display = "block";
-          return;
+      let hostData = null;
+
+      // Smart discovery loop: REST API check first (instant & immune to iframe sandbox limitations)
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        hostData = await fetchHostViaRest(user);
+        if (hostData) break;
+
+        // Parallel SDK check if available
+        const dbsToTry = [dbNamed, dbDefault].filter(Boolean);
+        for (const targetDb of dbsToTry) {
+          try {
+            const snap = await getDoc(doc(targetDb, "hosts", user));
+            if (snap.exists()) {
+              hostData = snap.data();
+              break;
+            }
+          } catch (e) {
+            console.warn("SDK query note:", e);
+          }
         }
+        if (hostData) break;
 
-        const data = docSnap.data();
-        if (data.password && data.password !== pwd) {
-          errEl.textContent = "Invalid password. Default is HostAdmin@2026 or check your phone app.";
-          errEl.style.color = "#f87171";
-          errEl.style.display = "block";
-          return;
+        if (attempt < 4) {
+          errEl.textContent = `Searching for mobile '${user}' (attempt ${attempt}/4)... Please make sure Remote Host app is open.`;
+          await new Promise(r => setTimeout(r, 1000));
         }
+      }
 
-        currentUsername = user;
-        document.getElementById("login-card").style.display = "none";
-        document.getElementById("app-tabs").style.display = "flex";
-        switchTab('screen-tab');
-        document.getElementById("session-badge").style.display = "inline-flex";
-        document.getElementById("logout-btn").style.display = "inline-flex";
-        document.getElementById("hdr-phone-user").textContent = "Connected to: " + user;
-
-        if (data.streamingMode) {
-          updateModeUI(data.streamingMode, false);
-        }
-
-        listenToMobileScreen(user);
-        initCloudTouches();
-      } catch (e) {
-        errEl.textContent = "Connection error: " + e.message;
+      if (!hostData) {
+        errEl.innerHTML = `
+          <strong style="color:#f87171;">Mobile username '${user}' not found yet.</strong><br>
+          <div style="font-size:11px; color:#cbd5e1; margin-top:6px; line-height:16px;">
+            • নিশ্চিত করুন আপনার মোবাইলে <strong>Remote Host</strong> অ্যাপটি চালু আছে।<br>
+            • অ্যাপের ড্যাশবোর্ডে <strong>'Sync Now'</strong> বাটনে চাপ দিন যাতে ক্লাউডে সাথে সাথে সিঙ্ক হয়।<br>
+            • মোবাইল ইউজার আইডি সঠিক আছে কি না মিলিয়ে নিন (যেমন: <strong>${user}</strong>)।
+          </div>
+        `;
         errEl.style.color = "#f87171";
         errEl.style.display = "block";
+        return;
+      }
+
+      if (hostData.password && hostData.password !== pwd) {
+        errEl.textContent = "Invalid password. Default is HostAdmin@2026 or check your phone app.";
+        errEl.style.color = "#f87171";
+        errEl.style.display = "block";
+        return;
+      }
+
+      currentUsername = user;
+      document.getElementById("login-card").style.display = "none";
+      document.getElementById("app-tabs").style.display = "flex";
+      switchTab('screen-tab');
+      document.getElementById("session-badge").style.display = "inline-flex";
+      document.getElementById("logout-btn").style.display = "inline-flex";
+      document.getElementById("hdr-phone-user").textContent = "Connected to: " + user;
+
+      // Apply initial host data immediately
+      applyHostDataToUI(hostData);
+
+      if (hostData.streamingMode) {
+        updateModeUI(hostData.streamingMode, false);
+      }
+
+      startLiveStream(user);
+      initCloudTouches();
+    }
+
+    function applyHostDataToUI(data) {
+      if (!data) return;
+
+      // Rapid frame update
+      if (data.latestFrame && data.frameTimestamp !== lastRenderedFrameTime) {
+        lastRenderedFrameTime = data.frameTimestamp;
+        const img = document.getElementById("mobile-screen-img");
+        if (img) img.src = data.latestFrame;
+      }
+      if (data.streamingMode && data.streamingMode !== activeMode) {
+        updateModeUI(data.streamingMode, false);
+      }
+
+      const statusEl = document.getElementById("m-status");
+      const hbEl = document.getElementById("m-heartbeat");
+      const batEl = document.getElementById("m-battery");
+      if (batEl) {
+        batEl.textContent = (data.batteryPct !== undefined ? data.batteryPct : "--") + "%" + (data.isCharging ? " ⚡" : "");
+      }
+      if (data.lastHeartbeat) {
+        lastKnownHeartbeat = data.lastHeartbeat;
+        lastKnownScreenOn = data.isScreenOn !== false;
+        lastKnownStatus = data.status || "ONLINE";
+
+        const diff = Math.max(0, Math.floor((Date.now() - data.lastHeartbeat) / 1000));
+        if (hbEl) {
+          if (diff <= 7) {
+            hbEl.textContent = "Just now (" + diff + "s)";
+            hbEl.style.color = "#34d399";
+          } else if (diff <= 30) {
+            hbEl.textContent = diff + "s ago";
+            hbEl.style.color = "#fbbf24";
+          } else {
+            hbEl.textContent = diff + "s ago (Inactive / Asleep)";
+            hbEl.style.color = "#f87171";
+          }
+        }
+        if (statusEl) {
+          if (diff <= 7) {
+            if (data.isScreenOn === false) {
+              statusEl.textContent = "STANDBY (Screen Off)";
+              statusEl.style.color = "#fbbf24";
+            } else {
+              statusEl.textContent = data.status || "ONLINE";
+              statusEl.style.color = "#34d399";
+            }
+          } else if (diff <= 30) {
+            statusEl.textContent = "IDLE / STANDBY";
+            statusEl.style.color = "#fbbf24";
+          } else {
+            statusEl.textContent = "DISCONNECTED / ASLEEP";
+            statusEl.style.color = "#f87171";
+          }
+        }
+      }
+
+      // Comprehensive Telemetry
+      if (data.telemetry) {
+        latestTelemetryCache = data.telemetry;
+        populateTelemetryUI(data.telemetry);
       }
     }
 
-    function listenToMobileScreen(username) {
-      if (hostDocUnsubscribe) hostDocUnsubscribe();
-      hostDocUnsubscribe = onSnapshot(doc(db, "hosts", username), (docSnap) => {
-        if (!docSnap.exists()) return;
-        const data = docSnap.data();
-        
-        // Rapid frame update
-        if (data.latestFrame && data.frameTimestamp !== lastRenderedFrameTime) {
-          lastRenderedFrameTime = data.frameTimestamp;
-          document.getElementById("mobile-screen-img").src = data.latestFrame;
-        }
-        if (data.streamingMode && data.streamingMode !== activeMode) {
-          updateModeUI(data.streamingMode, false);
-        }
+    function startLiveStream(username) {
+      if (livePollingTimer) {
+        clearInterval(livePollingTimer);
+        livePollingTimer = null;
+      }
+      if (hostDocUnsubscribe) {
+        try { hostDocUnsubscribe(); } catch (_) {}
+        hostDocUnsubscribe = null;
+      }
 
-        document.getElementById("m-status").textContent = data.status || "ONLINE";
-        document.getElementById("m-battery").textContent = (data.batteryPct || "--") + "%" + (data.isCharging ? " ⚡" : "");
-        if (data.lastHeartbeat) {
-          const diff = Math.max(0, Math.floor((Date.now() - data.lastHeartbeat) / 1000));
-          document.getElementById("m-heartbeat").textContent = diff <= 2 ? "Just now" : diff + "s ago";
+      // 1. High-speed REST polling (bulletproof across all browsers & cross-origin iframes)
+      let isFetching = false;
+      const poll = async () => {
+        if (!currentUsername || isFetching) return;
+        isFetching = true;
+        try {
+          const freshData = await fetchHostViaRest(username);
+          if (freshData) {
+            applyHostDataToUI(freshData);
+          }
+        } finally {
+          isFetching = false;
         }
+      };
 
-        // Comprehensive Telemetry
-        if (data.telemetry) {
-          latestTelemetryCache = data.telemetry;
-          populateTelemetryUI(data.telemetry);
+      livePollingTimer = setInterval(poll, getPollingIntervalMs());
+      poll();
+
+      // 2. Parallel SDK onSnapshot listener (if active in this browser environment)
+      try {
+        const targetDb = dbNamed || dbDefault;
+        if (targetDb) {
+          hostDocUnsubscribe = onSnapshot(doc(targetDb, "hosts", username), (docSnap) => {
+            if (docSnap.exists()) {
+              applyHostDataToUI(docSnap.data());
+            }
+          }, (err) => {
+            console.warn("onSnapshot listener notice (REST polling is active):", err);
+          });
         }
-      });
+      } catch (e) {
+        console.warn("onSnapshot registration note:", e);
+      }
     }
 
     function populateTelemetryUI(t) {
@@ -1003,14 +1273,34 @@
 
     async function sendCloudCommand(payload) {
       if (!currentUsername) return;
+      const cmdPayload = {
+        ...payload,
+        executed: false,
+        timestamp: Date.now()
+      };
+
+      // 1. Instant REST POST dispatch (bypasses all browser/iframe socket limitations)
+      const url = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/${FIRESTORE_DB_ID}/documents/hosts/${encodeURIComponent(currentUsername)}/commands?key=${FIRESTORE_API_KEY}`;
+      const fields = {};
+      for (const k in cmdPayload) {
+        fields[k] = wrapToFirestoreField(cmdPayload[k]);
+      }
       try {
-        await addDoc(collection(db, "hosts", currentUsername, "commands"), {
-          ...payload,
-          executed: false,
-          timestamp: Date.now()
-        });
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fields })
+        }).catch(err => console.warn("REST command dispatch note:", err));
       } catch (e) {
-        console.error("Failed to send command:", e);
+        console.warn("REST command error:", e);
+      }
+
+      // 2. Parallel SDK addDoc if active
+      const dbsToTry = [dbNamed, dbDefault].filter(Boolean);
+      for (const targetDb of dbsToTry) {
+        try {
+          addDoc(collection(targetDb, "hosts", currentUsername, "commands"), cmdPayload).catch(() => {});
+        } catch (_) {}
       }
     }
 
@@ -1030,7 +1320,14 @@
     window.exportTelemetryReport = exportTelemetryReport;
 
     function logout() {
-      if (hostDocUnsubscribe) hostDocUnsubscribe();
+      if (livePollingTimer) {
+        clearInterval(livePollingTimer);
+        livePollingTimer = null;
+      }
+      if (hostDocUnsubscribe) {
+        try { hostDocUnsubscribe(); } catch (_) {}
+        hostDocUnsubscribe = null;
+      }
       currentUsername = "";
       document.getElementById("login-card").style.display = "block";
       document.getElementById("app-tabs").style.display = "none";
@@ -1047,6 +1344,9 @@
     window.sendCloudNav = function(action) {
       sendCloudCommand({ type: "nav", action: action });
     };
+    window.wakeDeviceScreen = function() {
+      sendCloudCommand({ type: "wake" });
+    };
     window.sendCloudText = function() {
       const input = document.getElementById("type-text-input");
       const text = input.value.trim();
@@ -1057,9 +1357,12 @@
     window.sendCloudCommand = sendCloudCommand;
     window.logout = logout;
 
-    // Interactive Touch & Drag Simulation
+    // Interactive Touch & Drag Simulation with Aspect Ratio Correction & Duplication Guard
     function initCloudTouches() {
       const img = document.getElementById("mobile-screen-img");
+      if (!img || img._touchesBound) return;
+      img._touchesBound = true;
+
       let startX = 0;
       let startY = 0;
       let startTime = 0;
@@ -1067,10 +1370,31 @@
 
       function getNormalizedCoords(e) {
         const rect = img.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-        const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+        if (!rect.width || !rect.height) return { x: 0.5, y: 0.5 };
+        const clientX = e.touches ? (e.touches[0] ? e.touches[0].clientX : (e.changedTouches ? e.changedTouches[0].clientX : rect.left + rect.width / 2)) : e.clientX;
+        const clientY = e.touches ? (e.touches[0] ? e.touches[0].clientY : (e.changedTouches ? e.changedTouches[0].clientY : rect.top + rect.height / 2)) : e.clientY;
+
+        // Accurate letterbox aspect ratio compensation for object-fit: contain
+        let renderedW = rect.width;
+        let renderedH = rect.height;
+        let offsetX = 0;
+        let offsetY = 0;
+        if (img.naturalWidth && img.naturalHeight) {
+          const imgRatio = img.naturalWidth / img.naturalHeight;
+          const elemRatio = rect.width / rect.height;
+          if (imgRatio > elemRatio) {
+            renderedW = rect.width;
+            renderedH = rect.width / imgRatio;
+            offsetY = (rect.height - renderedH) / 2;
+          } else {
+            renderedH = rect.height;
+            renderedW = rect.height * imgRatio;
+            offsetX = (rect.width - renderedW) / 2;
+          }
+        }
+
+        const x = Math.max(0, Math.min(1, (clientX - (rect.left + offsetX)) / Math.max(1, renderedW)));
+        const y = Math.max(0, Math.min(1, (clientY - (rect.top + offsetY)) / Math.max(1, renderedH)));
         return { x, y };
       }
 
@@ -1110,10 +1434,8 @@
         const elapsed = Date.now() - startTime;
         const lastTouch = e.changedTouches ? e.changedTouches[0] : null;
         if (!lastTouch) return;
-        const rect = img.getBoundingClientRect();
-        const endX = Math.max(0, Math.min(1, (lastTouch.clientX - rect.left) / rect.width));
-        const endY = Math.max(0, Math.min(1, (lastTouch.clientY - rect.top) / rect.height));
-        const dist = Math.hypot(endX - startX, endY - startY);
+        const p = getNormalizedCoords(e);
+        const dist = Math.hypot(p.x - startX, p.y - startY);
 
         if (dist < 0.03) {
           sendCloudCommand({ type: "tap", x: startX, y: startY });
@@ -1122,6 +1444,24 @@
         }
       }, { passive: true });
     }
+
+    // Auto-fill and optional auto-connect from URL parameters (?id=... or ?user=...)
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlUser = params.get("id") || params.get("user") || params.get("username");
+      const urlPwd = params.get("pwd") || params.get("password");
+      if (urlUser) {
+        const uInput = document.getElementById("username-input");
+        if (uInput) uInput.value = urlUser;
+      }
+      if (urlPwd) {
+        const pInput = document.getElementById("password-input");
+        if (pInput) pInput.value = urlPwd;
+      }
+      if (urlUser && urlPwd) {
+        setTimeout(connectWithCloud, 250);
+      }
+    } catch (_) {}
   </script>
 </body>
 </html>
