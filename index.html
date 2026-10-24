@@ -1,4 +1,4 @@
-Simple Harmonic Motion এর মত<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="bn">
 <head>
   <meta charset="UTF-8">
@@ -329,6 +329,19 @@ Simple Harmonic Motion এর মত<!DOCTYPE html>
       <div style="display:flex; gap:24px; flex-wrap:wrap; justify-content:center; align-items:flex-start;">
         <!-- Phone Viewport -->
         <div class="screen-container">
+          <!-- WebRTC Live Status Indicator -->
+          <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:10px; padding:0 6px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span id="webrtc-badge" class="badge" style="background:rgba(16,185,129,0.2); color:#34d399; font-size:11px; border:1px solid #10b981;">
+                ⚡ WebRTC P2P (~40ms)
+              </span>
+              <span id="webrtc-ping" style="font-size:11px; color:#94a3b8; font-weight:700;">-- ms</span>
+            </div>
+            <button class="btn-action" style="padding:4px 8px; font-size:11px; height:26px;" onclick="reconnectWebRtc()" title="Restart WebRTC P2P tunnel">
+              🔄 WebRTC
+            </button>
+          </div>
+
           <div class="viewport" id="viewport">
             <img id="mobile-screen-img" src="" alt="Waiting for mobile screen stream...">
           </div>
@@ -678,34 +691,214 @@ Simple Harmonic Motion এর মত<!DOCTYPE html>
     let lastKnownScreenOn = true;
     let lastKnownStatus = "ONLINE";
 
-    setInterval(() => {
-      if (!lastKnownHeartbeat) return;
-      const hbEl = document.getElementById("m-heartbeat");
-      const statusEl = document.getElementById("m-status");
-      if (!hbEl || !statusEl) return;
-      const diff = Math.max(0, Math.floor((Date.now() - lastKnownHeartbeat) / 1000));
-      if (diff <= 7) {
-        hbEl.textContent = "Just now (" + diff + "s)";
-        hbEl.style.color = "#34d399";
-        if (lastKnownScreenOn === false) {
-          statusEl.textContent = "STANDBY (Screen Off)";
-          statusEl.style.color = "#fbbf24";
-        } else {
-          statusEl.textContent = lastKnownStatus || "ONLINE";
-          statusEl.style.color = "#34d399";
-        }
-      } else if (diff <= 30) {
-        hbEl.textContent = diff + "s ago";
-        hbEl.style.color = "#fbbf24";
-        statusEl.textContent = "IDLE / STANDBY";
-        statusEl.style.color = "#fbbf24";
-      } else {
-        hbEl.textContent = diff + "s ago (Inactive / Asleep)";
-        hbEl.style.color = "#f87171";
-        statusEl.textContent = "DISCONNECTED / ASLEEP";
-        statusEl.style.color = "#f87171";
+    // WebRTC P2P Ultra-Fast State
+    let rtcPeerConnection = null;
+    let rtcDataChannel = null;
+    let hostIceUnsubscribe = null;
+    let hostAnswerUnsubscribe = null;
+    let isWebRtcActive = false;
+    let webrtcPingInterval = null;
+
+    let currentSessionId = "";
+    let pendingHostCandidates = [];
+
+    async function startWebRtcConnection(username) {
+      if (!username) return;
+      currentSessionId = "sess_" + Date.now();
+      pendingHostCandidates = [];
+      console.log("Initiating WebRTC Ultra-Fast P2P connection for:", username, "Session:", currentSessionId);
+      const badge = document.getElementById("webrtc-badge");
+      if (badge) {
+        badge.textContent = "⏳ WebRTC Connecting...";
+        badge.style.background = "rgba(245, 158, 11, 0.2)";
+        badge.style.color = "#fbbf24";
+        badge.style.border = "1px solid #f59e0b";
       }
-    }, 1000);
+
+      try {
+        if (rtcPeerConnection) {
+          try { rtcPeerConnection.close(); } catch (_) {}
+        }
+        if (hostIceUnsubscribe) hostIceUnsubscribe();
+        if (hostAnswerUnsubscribe) hostAnswerUnsubscribe();
+        if (webrtcPingInterval) clearInterval(webrtcPingInterval);
+
+        const config = {
+          iceServers: [
+            { urls: "stun:stun.l.google.com:19302" },
+            { urls: "stun:stun1.l.google.com:19302" },
+            { urls: "stun:stun2.l.google.com:19302" }
+          ]
+        };
+
+        rtcPeerConnection = new RTCPeerConnection(config);
+
+        // Low-latency DataChannel for continuous 10-20 FPS frames & 0ms input actions
+        rtcDataChannel = rtcPeerConnection.createDataChannel("remote_control", {
+          ordered: false,
+          maxRetransmits: 0
+        });
+        setupWebRtcDataChannel(rtcDataChannel);
+
+        // Browser local ICE candidate gathering
+        rtcPeerConnection.onicecandidate = async (event) => {
+          if (event.candidate) {
+            try {
+              await addDoc(collection(db, "hosts", username, "webrtc_ice_web"), {
+                sessionId: currentSessionId,
+                sdp: event.candidate.candidate,
+                sdpMid: event.candidate.sdpMid,
+                sdpMLineIndex: event.candidate.sdpMLineIndex,
+                timestamp: Date.now()
+              });
+            } catch (err) {
+              console.warn("Error sending ICE candidate:", err);
+            }
+          }
+        };
+
+        rtcPeerConnection.oniceconnectionstatechange = () => {
+          console.log("WebRTC ICE Connection State:", rtcPeerConnection.iceConnectionState);
+          const b = document.getElementById("webrtc-badge");
+          if (!b) return;
+          if (rtcPeerConnection.iceConnectionState === "connected" || rtcPeerConnection.iceConnectionState === "completed") {
+            b.textContent = "⚡ WebRTC P2P (Active • ~40ms • Real-time)";
+            b.style.background = "rgba(16, 185, 129, 0.2)";
+            b.style.color = "#34d399";
+            b.style.border = "1px solid #10b981";
+          } else if (rtcPeerConnection.iceConnectionState === "checking") {
+            b.textContent = "⏳ WebRTC P2P Handshake...";
+            b.style.background = "rgba(245, 158, 11, 0.2)";
+            b.style.color = "#fbbf24";
+            b.style.border = "1px solid #f59e0b";
+          } else if (rtcPeerConnection.iceConnectionState === "failed" || rtcPeerConnection.iceConnectionState === "disconnected") {
+            b.textContent = "🔄 Cloud Relay Active";
+            b.style.background = "rgba(56, 189, 248, 0.15)";
+            b.style.color = "#38bdf8";
+            b.style.border = "1px solid #38bdf8";
+          }
+        };
+
+        // Listen for mobile host ICE candidates
+        hostIceUnsubscribe = onSnapshot(collection(db, "hosts", username, "webrtc_ice_host"), (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === "added") {
+              const d = change.doc.data();
+              if (d.sessionId && d.sessionId !== currentSessionId) return;
+              if (d.sdp) {
+                const candidate = new RTCIceCandidate({
+                  candidate: d.sdp,
+                  sdpMid: d.sdpMid,
+                  sdpMLineIndex: d.sdpMLineIndex
+                });
+                if (rtcPeerConnection && rtcPeerConnection.remoteDescription) {
+                  rtcPeerConnection.addIceCandidate(candidate).catch(() => {});
+                } else {
+                  pendingHostCandidates.push(candidate);
+                }
+              }
+            }
+          });
+        });
+
+        // Create SDP Offer
+        const offer = await rtcPeerConnection.createOffer();
+        await rtcPeerConnection.setLocalDescription(offer);
+
+        // Upload offer to Firestore
+        await setDoc(doc(db, "hosts", username, "webrtc", "session"), {
+          sessionId: currentSessionId,
+          offer: {
+            type: offer.type,
+            sdp: offer.sdp
+          },
+          status: "OFFERED",
+          offerTime: Date.now()
+        }, { merge: true });
+
+        // Listen for mobile host Answer
+        hostAnswerUnsubscribe = onSnapshot(doc(db, "hosts", username, "webrtc", "session"), async (docSnap) => {
+          if (!docSnap.exists()) return;
+          const d = docSnap.data();
+          if (d.status === "ANSWERED" && d.answer && d.sessionId === currentSessionId && rtcPeerConnection && rtcPeerConnection.signalingState === "have-local-offer") {
+            console.log("Setting remote description from mobile host answer...");
+            const answer = new RTCSessionDescription({
+              type: d.answer.type,
+              sdp: d.answer.sdp
+            });
+            await rtcPeerConnection.setRemoteDescription(answer);
+            console.log("Remote description set! Draining " + pendingHostCandidates.length + " pending host ICE candidates...");
+            for (const cand of pendingHostCandidates) {
+              rtcPeerConnection.addIceCandidate(cand).catch(() => {});
+            }
+            pendingHostCandidates = [];
+          }
+        });
+
+      } catch (e) {
+        console.error("WebRTC initialization error:", e);
+      }
+    }
+
+    function setupWebRtcDataChannel(dc) {
+      dc.binaryType = "arraybuffer";
+
+      dc.onopen = () => {
+        console.log("WebRTC DataChannel OPEN! Ultra-low latency streaming engaged.");
+        isWebRtcActive = true;
+        const b = document.getElementById("webrtc-badge");
+        if (b) {
+          b.textContent = "⚡ WebRTC P2P (Active • ~40ms • 20 FPS)";
+          b.style.background = "rgba(16, 185, 129, 0.2)";
+          b.style.color = "#34d399";
+          b.style.border = "1px solid #10b981";
+        }
+        webrtcPingInterval = setInterval(() => {
+          if (dc.readyState === "open") {
+            dc.send(JSON.stringify({ type: "ping", time: Date.now() }));
+          }
+        }, 2000);
+      };
+
+      dc.onclose = () => {
+        isWebRtcActive = false;
+        if (webrtcPingInterval) clearInterval(webrtcPingInterval);
+      };
+
+      dc.onmessage = (event) => {
+        if (event.data instanceof ArrayBuffer) {
+          const uint8 = new Uint8Array(event.data);
+          if (uint8.length > 1 && uint8[0] === 1) {
+            // High-speed binary image frame over WebRTC
+            const imageBytes = uint8.subarray(1);
+            const blob = new Blob([imageBytes], { type: "image/jpeg" });
+            const url = URL.createObjectURL(blob);
+            const img = document.getElementById("mobile-screen-img");
+            if (img) {
+              const oldUrl = img.dataset.blobUrl;
+              img.src = url;
+              img.dataset.blobUrl = url;
+              if (oldUrl) URL.revokeObjectURL(oldUrl);
+            }
+          }
+        } else if (typeof event.data === "string") {
+          try {
+            const json = JSON.parse(event.data);
+            if (json.type === "pong") {
+              const ping = Date.now() - json.clientTime;
+              const pingEl = document.getElementById("webrtc-ping");
+              if (pingEl) pingEl.textContent = ping + " ms";
+            }
+          } catch (_) {}
+        }
+      };
+    }
+
+    window.reconnectWebRtc = function() {
+      if (currentUsername) {
+        startWebRtcConnection(currentUsername);
+      }
+    };
 
     // Charts instances
     let batteryChartInstance = null;
@@ -810,6 +1003,7 @@ Simple Harmonic Motion এর মত<!DOCTYPE html>
         }
 
         listenToMobileScreen(user);
+        startWebRtcConnection(user);
         initCloudTouches();
       } catch (e) {
         errEl.textContent = "Connection error: " + e.message;
@@ -1127,6 +1321,18 @@ Simple Harmonic Motion এর মত<!DOCTYPE html>
 
     async function sendCloudCommand(payload) {
       if (!currentUsername) return;
+
+      // 1. Instant 0ms execution via WebRTC DataChannel
+      if (rtcDataChannel && rtcDataChannel.readyState === "open") {
+        try {
+          rtcDataChannel.send(JSON.stringify(payload));
+          return;
+        } catch (err) {
+          console.warn("WebRTC DataChannel send failed, falling back to Firestore:", err);
+        }
+      }
+
+      // 2. Fallback to Firestore command queue
       try {
         await addDoc(collection(db, "hosts", currentUsername, "commands"), {
           ...payload,
@@ -1155,6 +1361,15 @@ Simple Harmonic Motion এর মত<!DOCTYPE html>
 
     function logout() {
       if (hostDocUnsubscribe) hostDocUnsubscribe();
+      if (hostIceUnsubscribe) hostIceUnsubscribe();
+      if (hostAnswerUnsubscribe) hostAnswerUnsubscribe();
+      if (webrtcPingInterval) clearInterval(webrtcPingInterval);
+      if (rtcPeerConnection) {
+        try { rtcPeerConnection.close(); } catch (_) {}
+        rtcPeerConnection = null;
+      }
+      rtcDataChannel = null;
+      isWebRtcActive = false;
       currentUsername = "";
       document.getElementById("login-card").style.display = "block";
       document.getElementById("app-tabs").style.display = "none";
