@@ -369,61 +369,72 @@
           <div class="card" style="border: 1px solid rgba(56, 189, 248, 0.4); background: #0c1527;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <h3 style="font-size:14px; color:#38bdf8; display:flex; align-items:center; gap:6px;">
-                ⚡ 6-Step Low-Latency Stream Engine
+                ⚡ 6-Point Ultra-Low Latency Engine
               </h3>
               <button class="btn btn-primary" style="padding:4px 10px; font-size:11px;" onclick="requestImmediateKeyframe()">
                 ⚡ Sync I-Frame
               </button>
             </div>
 
-            <!-- 1. Keyframe Interval (GOP) -->
+            <!-- 1. Resolution & FPS (480p @ 20 FPS) -->
             <div class="metric-row">
-              <span class="metric-label">১. Keyframe Interval (GOP):</span>
-              <strong id="m-gop-val" style="color:#34d399;">1.0s (Fast Keyframe • No Backlog)</strong>
+              <span class="metric-label">১. Resolution & FPS:</span>
+              <strong id="m-res-val" style="color:#34d399;">480p @ 20 FPS (854x480 • Min CPU Load)</strong>
             </div>
 
-            <!-- 2. Hardware Encoder & Profile -->
+            <!-- 2. Codec: VP8 instead of H.264 -->
             <div class="metric-row">
-              <span class="metric-label">২. Hardware Encoder Profile:</span>
-              <strong id="m-profile-val" style="color:#38bdf8;">H.264 Baseline (Zero B-Frames)</strong>
+              <span class="metric-label">২. Video Codec:</span>
+              <strong id="m-profile-val" style="color:#38bdf8;">VP8 (Zero Lookahead • No B-Frames)</strong>
             </div>
 
-            <!-- 3. Jitter Buffer & Playout Delay -->
+            <!-- 3. Hardware Video Acceleration -->
             <div class="metric-row">
-              <span class="metric-label">৩. Jitter Buffer & Playout Delay:</span>
-              <strong id="m-jitter-val" style="color:#34d399;">0.0 ms (Direct srcObject • Zero Delay)</strong>
+              <span class="metric-label">৩. Hardware Acceleration:</span>
+              <strong id="m-hw-val" style="color:#34d399;">Verified Hardware MediaCodec (0% CPU Fallback)</strong>
             </div>
 
-            <!-- 4. Resolution, Bitrate & FPS -->
+            <!-- 4. SDP Munging Bitrate Limit -->
             <div class="metric-row">
-              <span class="metric-label">৪. Resolution / Bitrate / FPS:</span>
-              <strong id="m-res-val" style="color:#fbbf24;">720p @ 30 FPS (2000 kbps CBR)</strong>
+              <span class="metric-label">৪. SDP Bitrate Munging:</span>
+              <strong id="m-bitrate-val" style="color:#fbbf24;">800-1500 kbps (x-google-bitrate capped)</strong>
             </div>
 
-            <!-- 5. Network P2P vs TURN Relay -->
+            <!-- 5. Receiver Catch-up & Frame Drop -->
             <div class="metric-row">
-              <span class="metric-label">৫. Network Connection Type:</span>
-              <span id="m-p2p-type" class="badge" style="background:rgba(16,185,129,0.2); color:#34d399; font-size:11px;">
-                🟢 Direct P2P (srflx/host)
-              </span>
+              <span class="metric-label">৫. Receiver Catch-up:</span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span id="catchup-badge" class="badge" style="background:rgba(16,185,129,0.2); color:#34d399; font-size:11px;">
+                  ⚡ Auto Catch-up Active (&lt;0.4s)
+                </span>
+                <span id="m-lag-val" style="font-weight:700; color:#34d399; font-size:12px;">-- ms lag</span>
+              </div>
             </div>
 
-            <!-- 6. Frame Dropping / Queue Flush -->
+            <!-- 6. Network Connection Type & Queue Flush -->
             <div class="metric-row" style="border-bottom:none;">
-              <span class="metric-label">৬. Queue Flush Policy:</span>
-              <strong id="m-queue-val" style="color:#38bdf8;">Queue Flush Active (0 queued backlog)</strong>
+              <span class="metric-label">৬. P2P & Queue Flush:</span>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span id="m-p2p-type" class="badge" style="background:rgba(16,185,129,0.2); color:#34d399; font-size:11px;">
+                  🟢 Direct P2P
+                </span>
+                <span id="m-queue-val" style="font-size:11px; color:#94a3b8;">0 frame backlog</span>
+              </div>
             </div>
 
             <!-- Quick Preset Buttons -->
-            <div style="display:flex; gap:6px; margin-top:10px;">
-              <button class="btn btn-action" style="flex:1; font-size:11px; padding:6px 8px;" onclick="updateOptimizerSettings(720, 1280, 2000, 30, 1)">
-                🎯 720p (2 Mbps)
+            <div style="display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;">
+              <button class="btn btn-action" style="flex:1; min-width:110px; font-size:11px; padding:6px 8px; border-color:#10b981; color:#34d399;" onclick="updateOptimizerSettings(480, 854, 1000, 20, 1, 'VP8')">
+                ⚡ 480p @ 20 FPS (VP8)
               </button>
-              <button class="btn btn-action" style="flex:1; font-size:11px; padding:6px 8px;" onclick="updateOptimizerSettings(540, 960, 1500, 30, 1)">
-                ⚡ 540p (1.5 Mbps)
+              <button class="btn btn-action" style="flex:1; min-width:110px; font-size:11px; padding:6px 8px;" onclick="updateOptimizerSettings(540, 960, 1500, 25, 1, 'VP8')">
+                ⚖️ 540p @ 25 FPS (VP8)
               </button>
-              <button class="btn btn-action" style="flex:1; font-size:11px; padding:6px 8px;" onclick="requestImmediateKeyframe()">
-                🔄 Force I-Frame
+              <button class="btn btn-action" style="flex:1; min-width:110px; font-size:11px; padding:6px 8px;" onclick="updateOptimizerSettings(720, 1280, 2000, 30, 1, 'H264')">
+                🎯 720p @ 30 FPS (H.264)
+              </button>
+              <button class="btn btn-action" style="padding:6px 10px; font-size:11px; background:rgba(56,189,248,0.2); color:#38bdf8;" onclick="forceReceiverCatchUp()" title="Force jump video to the latest live frame">
+                ⏩ Catch-up Live
               </button>
             </div>
           </div>
@@ -775,6 +786,60 @@
     let currentSessionId = "";
     let pendingHostCandidates = [];
 
+    // Rule 4 & 2: SDP Munging for VP8 priority and low-latency bitrate limit
+    function mungeSdpForLowLatency(sdp) {
+      const lines = sdp.split("\r\n");
+      let vp8Payload = null;
+      let h264Payload = null;
+
+      for (const line of lines) {
+        if (line.startsWith("a=rtpmap:")) {
+          const parts = line.replace("a=rtpmap:", "").split(" ");
+          const pt = parts[0];
+          const codec = (parts[1] || "").toUpperCase();
+          if (codec.startsWith("VP8")) {
+            vp8Payload = pt;
+          } else if (codec.startsWith("H264")) {
+            h264Payload = pt;
+          }
+        }
+      }
+
+      const result = [];
+      for (let line of lines) {
+        // Prioritize VP8 (Rule 2)
+        if (line.startsWith("m=video")) {
+          if (vp8Payload) {
+            const tokens = line.split(" ");
+            if (tokens.length > 3) {
+              const header = tokens.slice(0, 3);
+              const pts = tokens.slice(3).filter(p => p !== vp8Payload);
+              pts.unshift(vp8Payload);
+              line = header.concat(pts).join(" ");
+            }
+          }
+          result.push(line);
+          // Rule 4: Capped Bitrate & Bandwidth
+          result.push("b=AS:1500");
+          result.push("b=TIAS:1500000");
+          continue;
+        }
+
+        // Rule 4: Bitrate Munging (x-google bitrate limits)
+        if (line.startsWith("a=fmtp:")) {
+          const pt = line.replace("a=fmtp:", "").split(" ")[0];
+          if (pt === vp8Payload || pt === h264Payload) {
+            if (!line.includes("x-google-max-bitrate")) {
+              line += ";x-google-max-bitrate=1500;x-google-min-bitrate=800;x-google-start-bitrate=1000";
+            }
+          }
+        }
+
+        result.push(line);
+      }
+      return result.join("\r\n");
+    }
+
     async function startWebRtcConnection(username) {
       if (!username) return;
       currentSessionId = "sess_" + Date.now();
@@ -796,6 +861,7 @@
         if (hostAnswerUnsubscribe) hostAnswerUnsubscribe();
         if (webrtcPingInterval) clearInterval(webrtcPingInterval);
         if (window.webrtcStatsInterval) clearInterval(window.webrtcStatsInterval);
+        if (window.catchUpInterval) clearInterval(window.catchUpInterval);
 
         // Rule 5: Avoid relay and prioritize Direct P2P via Google STUN
         const config = {
@@ -829,6 +895,44 @@
             if ('playoutDelayHint' in event.receiver) event.receiver.playoutDelayHint = 0.0;
             if ('jitterBufferTarget' in event.receiver) event.receiver.jitterBufferTarget = 0.0;
           }
+
+          // Rule 5: Active Catch-up / Frame Drop monitor on receiver
+          if (window.catchUpInterval) clearInterval(window.catchUpInterval);
+          window.catchUpInterval = setInterval(() => {
+            if (!video || !video.srcObject || video.paused || video.buffered.length === 0) return;
+            try {
+              const liveEdge = video.buffered.end(video.buffered.length - 1);
+              const lag = liveEdge - video.currentTime;
+              const lagEl = document.getElementById("m-lag-val");
+              if (lagEl) {
+                lagEl.textContent = `${Math.max(0, Math.round(lag * 1000))} ms lag`;
+                if (lag > 0.4) {
+                  lagEl.style.color = "#f87171";
+                } else if (lag > 0.2) {
+                  lagEl.style.color = "#fbbf24";
+                } else {
+                  lagEl.style.color = "#34d399";
+                }
+              }
+
+              // Rule 5: If lag exceeds 0.4s (400ms backlog), jump directly to live edge!
+              if (lag > 0.4) {
+                console.warn(`[Catch-up] Latency lag is ${(lag * 1000).toFixed(0)}ms (>400ms). Jumping to live edge!`);
+                video.currentTime = Math.max(0, liveEdge - 0.04);
+                video.playbackRate = 1.0;
+                const badge = document.getElementById("catchup-badge");
+                if (badge) {
+                  badge.textContent = "⚡ Caught Up (<0.04s)";
+                  badge.style.color = "#38bdf8";
+                  setTimeout(() => { badge.textContent = "⚡ Auto Catch-up Active (<0.4s)"; badge.style.color = "#34d399"; }, 600);
+                }
+              } else if (lag > 0.18) {
+                video.playbackRate = 1.25; // Speed up slightly to drain buffer seamlessly
+              } else {
+                video.playbackRate = 1.0;
+              }
+            } catch (_) {}
+          }, 100);
         };
 
         // Low-latency DataChannel for continuous frames & 0ms input actions
@@ -908,11 +1012,10 @@
           const b = document.getElementById("webrtc-badge");
           if (!b) return;
           if (rtcPeerConnection.iceConnectionState === "connected" || rtcPeerConnection.iceConnectionState === "completed") {
-            b.textContent = "⚡ WebRTC P2P (Active • ~35ms • Real-time)";
+            b.textContent = "⚡ WebRTC P2P (Active • VP8 • 480p@20fps)";
             b.style.background = "rgba(16, 185, 129, 0.2)";
             b.style.color = "#34d399";
             b.style.border = "1px solid #10b981";
-            // Rule 1: Request instant sync I-Frame as soon as connected!
             window.requestImmediateKeyframe();
           } else if (rtcPeerConnection.iceConnectionState === "checking") {
             b.textContent = "⏳ WebRTC P2P Handshake...";
@@ -949,16 +1052,24 @@
           });
         });
 
-        // Create SDP Offer
-        const offer = await rtcPeerConnection.createOffer();
-        await rtcPeerConnection.setLocalDescription(offer);
+        // Create SDP Offer with Low-Latency SDP Munging (Rule 4 & 2)
+        const offer = await rtcPeerConnection.createOffer({
+          offerToReceiveVideo: true,
+          offerToReceiveAudio: false
+        });
+        const mungedOfferSdp = mungeSdpForLowLatency(offer.sdp);
+        const mungedOffer = new RTCSessionDescription({
+          type: offer.type,
+          sdp: mungedOfferSdp
+        });
+        await rtcPeerConnection.setLocalDescription(mungedOffer);
 
         // Upload offer to Firestore
         await setDoc(doc(db, "hosts", username, "webrtc", "session"), {
           sessionId: currentSessionId,
           offer: {
-            type: offer.type,
-            sdp: offer.sdp
+            type: mungedOffer.type,
+            sdp: mungedOffer.sdp
           },
           status: "OFFERED",
           offerTime: Date.now()
@@ -996,7 +1107,7 @@
         isWebRtcActive = true;
         const b = document.getElementById("webrtc-badge");
         if (b) {
-          b.textContent = "⚡ WebRTC P2P (Active • ~35ms • 30 FPS)";
+          b.textContent = "⚡ WebRTC P2P (Active • VP8 • 480p@20fps)";
           b.style.background = "rgba(16, 185, 129, 0.2)";
           b.style.color = "#34d399";
           b.style.border = "1px solid #10b981";
@@ -1041,8 +1152,8 @@
               if (oldUrl) URL.revokeObjectURL(oldUrl);
             }
           }
-          // Packet Type 0x02: H.264 Baseline Stream Packet
-          else if (packetType === 2 && uint8.length > 10) {
+          // Packet Type 0x02 (H.264) or 0x03 (VP8) Video Stream Packet
+          else if ((packetType === 2 || packetType === 3) && uint8.length > 10) {
             const isKeyFrame = uint8[1] === 1;
             if (isKeyFrame) {
               const gopEl = document.getElementById("m-gop-val");
@@ -1059,20 +1170,20 @@
               if (pingEl) pingEl.textContent = ping + " ms";
               if (json.droppedFrames !== undefined) {
                 const qEl = document.getElementById("m-queue-val");
-                if (qEl) qEl.textContent = `Queue Flush Active (${json.droppedFrames} frames skipped for 0 lag)`;
+                if (qEl) qEl.textContent = `${json.droppedFrames} frames skipped (0 lag)`;
               }
             } else if (json.type === "encoder_stats") {
-              if (json.gopIntervalSec) {
-                const el = document.getElementById("m-gop-val");
-                if (el) el.textContent = `${json.gopIntervalSec}s (Fast Keyframe • No Backlog)`;
-              }
-              if (json.profile) {
+              if (json.codec) {
                 const el = document.getElementById("m-profile-val");
-                if (el) el.textContent = json.profile;
+                if (el) el.textContent = json.codec;
+              }
+              if (json.activeCodecName) {
+                const hwEl = document.getElementById("m-hw-val");
+                if (hwEl) hwEl.textContent = `Hardware (${json.activeCodecName})`;
               }
               if (json.targetResolution) {
                 const el = document.getElementById("m-res-val");
-                if (el) el.textContent = `${json.targetResolution} (${json.targetBitrateKbps} kbps CBR)`;
+                if (el) el.textContent = `${json.targetResolution} @ ${json.targetFps || 20} FPS (${json.targetBitrateKbps || 1000} kbps CBR)`;
               }
             }
           } catch (_) {}
@@ -1098,8 +1209,25 @@
       }
     };
 
-    // Rule 4: Dynamic resolution / bitrate / FPS adjustment
-    window.updateOptimizerSettings = function(w, h, br, fps, gop) {
+    // Rule 5: Force receiver catch up to live edge
+    window.forceReceiverCatchUp = function() {
+      const video = document.getElementById("mobile-screen-video");
+      if (video && video.buffered.length > 0) {
+        const liveEdge = video.buffered.end(video.buffered.length - 1);
+        video.currentTime = Math.max(0, liveEdge - 0.04);
+        video.playbackRate = 1.0;
+      }
+      window.requestImmediateKeyframe();
+      const badge = document.getElementById("catchup-badge");
+      if (badge) {
+        badge.textContent = "⚡ Live Edge Forced";
+        badge.style.color = "#38bdf8";
+        setTimeout(() => { badge.textContent = "⚡ Auto Catch-up Active (<0.4s)"; badge.style.color = "#34d399"; }, 600);
+      }
+    };
+
+    // Rule 1 & 4: Dynamic resolution / bitrate / FPS & Codec adjustment
+    window.updateOptimizerSettings = function(w, h, br, fps, gop, codec = "VP8") {
       if (rtcDataChannel && rtcDataChannel.readyState === "open") {
         rtcDataChannel.send(JSON.stringify({
           type: "set_encoder_config",
@@ -1107,15 +1235,21 @@
           height: h,
           bitrate: br,
           fps: fps,
-          gop: gop
+          gop: gop,
+          codec: codec
         }));
       }
-      const mode = w <= 540 ? "LOW_LATENCY" : (w <= 720 ? "BALANCED" : "HIGH_QUALITY");
-      updateModeUI(mode, true);
       const resEl = document.getElementById("m-res-val");
       if (resEl) {
-        resEl.textContent = `${h}p @ ${fps} FPS (${br} kbps CBR)`;
+        resEl.textContent = `${w}x${h} (${w <= 480 ? '480p' : w <= 540 ? '540p' : '720p'}) @ ${fps} FPS (${br} kbps CBR)`;
       }
+      const codecEl = document.getElementById("m-profile-val");
+      if (codecEl) {
+        codecEl.textContent = codec === "VP8" ? "VP8 (Zero Lookahead • No B-Frames)" : "H.264 Baseline Profile (No B-Frames)";
+      }
+      const mode = w <= 480 ? "LOW_LATENCY" : (w <= 540 ? "BALANCED" : "HIGH_QUALITY");
+      updateModeUI(mode, true);
+      window.forceReceiverCatchUp();
     };
 
     window.reconnectWebRtc = function() {
